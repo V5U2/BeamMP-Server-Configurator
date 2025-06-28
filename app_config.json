@@ -1,0 +1,164 @@
+{
+  "defaultMaps": [
+    {
+      "name": "Gridmap v2",
+      "path": "/levels/gridmap_v2/info.json"
+    },
+    {
+      "name": "Johnson Valley",
+      "path": "/levels/johnson_valley/info.json"
+    },
+    {
+      "name": "Automation Test Track",
+      "path": "/levels/automation_test_track/info.json"
+    },
+    {
+      "name": "East Coast USA",
+      "path": "/levels/east_coast_usa/info.json"
+    },
+    {
+      "name": "Hirochi Raceway",
+      "path": "/levels/hirochi_raceway/info.json"
+    },
+    {
+      "name": "Italy",
+      "path": "/levels/italy/info.json"
+    },
+    {
+      "name": "Jungle Rock Island",
+      "path": "/levels/jungle_rock_island/info.json"
+    },
+    {
+      "name": "Industrial",
+      "path": "/levels/industrial/info.json"
+    },
+    {
+      "name": "Small Island",
+      "path": "/levels/small_island/info.json"
+    },
+    {
+      "name": "Small Grid",
+      "path": "/levels/smallgrid/info.json"
+    },
+    {
+      "name": "Utah",
+      "path": "/levels/utah/info.json"
+    },
+    {
+      "name": "West Coast USA",
+      "path": "/levels/west_coast_usa/info.json"
+    },
+    {
+      "name": "Driver Training",
+      "path": "/levels/driver_training/info.json"
+    },
+    {
+      "name": "Derby",
+      "path": "/levels/derby/info.json"
+    }
+  ],
+  "defaultTags": {
+    "Age/Content": [
+      "Mature/18+"
+    ],
+    "Gameplay Types": [
+      "Freeroam",
+      "Roleplay",
+      "Economy",
+      "Traffic"
+    ],
+    "Racing Categories": [
+      "Racing",
+      "Racing:NASCAR",
+      "Racing:Track",
+      "Racing:Drag",
+      "Racing:Rally",
+      "Touge"
+    ],
+    "Off-Roading & Challenges": [
+      "Offroad",
+      "Crawling",
+      "Dakar",
+      "Challenge"
+    ],
+    "Destruction Events": [
+      "Derby",
+      "Arena"
+    ],
+    "Weather & Time": [
+      "Snow/Ice",
+      "Rain",
+      "Night",
+      "Weather"
+    ],
+    "Gamemodes": [
+      "Gamemode",
+      "Gamemode:Racing",
+      "Gamemode:Rally",
+      "Gamemode:Drag",
+      "Gamemode:Derby",
+      "Gamemode:Infection",
+      "Gamemode:Cops-Robbers",
+      "Gamemode:Delivery",
+      "Gamemode:Sumo"
+    ],
+    "Community & Events": [
+      "Scenarios",
+      "Events",
+      "Leaderboard"
+    ],
+    "Mods": [
+      "Modded",
+      "Mod:BeamPaint",
+      "Mod:BeamJoy",
+      "Mod:CEI"
+    ],
+    "Languages": [
+      "Lang:English",
+      "Lang:Russian",
+      "Lang:French",
+      "Lang:Spanish",
+      "Lang:Portuguese",
+      "Lang:German",
+      "Lang:Polish",
+      "Lang:Arabic"
+    ],
+    "Other": [
+      "Vanilla",
+      "Moderated"
+    ]
+  },
+  "appDefaults": {
+    "theme": "dark",
+    "autoSave": true,
+    "backupRetention": 30,
+    "customMaps": [],
+    "customTags": []
+  },
+  "serverDefaults": {
+    "General": {
+      "Name": "BeamMP Server",
+      "Description": "BeamMP Server",
+      "Port": 30814,
+      "MaxPlayers": 8,
+      "MaxCars": 10,
+      "Map": "/levels/utah/info.json",
+      "ResourceFolder": "Resources",
+      "Tags": "Freeroam",
+      "Mods": "",
+      "AuthKey": "",
+      "Private": true,
+      "Debug": false,
+      "LogChat": false
+    },
+    "Misc": {
+      "SendErrorsShowMessage": false,
+      "SendErrors": false,
+      "ImScaredOfUpdates": false
+    }
+  },
+  "documentation": {
+    "officialDocs": "https://docs.beammp.com/server/server-maintenance/#the-serverconfig-file",
+    "keymasterUrl": "https://keymaster.beammp.com"
+  }
+} 

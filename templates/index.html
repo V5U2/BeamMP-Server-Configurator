@@ -224,6 +224,44 @@
         .fw-bold.text-primary {
             color: var(--accent-color) !important;
         }
+        
+        /* Custom Map Dropdown Styling */
+        #mapDropdown {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+            color: var(--text-primary);
+        }
+        #mapDropdown:hover {
+            background-color: var(--bg-card);
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+        }
+        #mapDropdown:focus {
+            background-color: var(--bg-card);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
+            color: var(--text-primary);
+        }
+        #mapDropdownMenu {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        #mapDropdownMenu .dropdown-item {
+            color: var(--text-primary);
+            background-color: transparent;
+        }
+        #mapDropdownMenu .dropdown-item:hover {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        #mapDropdownMenu .dropdown-item:active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        #selectedMapPath {
+            color: var(--text-secondary) !important;
+        }
     </style>
 </head>
 <body>
@@ -310,22 +348,16 @@
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label">Map</label>
-                                                <select class="form-select" id="Map" data-section="General">
-                                                    <option value="/levels/gridmap_v2/info.json">Gridmap v2</option>
-                                                    <option value="/levels/johnson_valley/info.json">Johnson Valley</option>
-                                                    <option value="/levels/automation_test_track/info.json">Automation Test Track</option>
-                                                    <option value="/levels/east_coast_usa/info.json">East Coast USA</option>
-                                                    <option value="/levels/hirochi_raceway/info.json">Hirochi Raceway</option>
-                                                    <option value="/levels/italy/info.json">Italy</option>
-                                                    <option value="/levels/jungle_rock_island/info.json">Jungle Rock Island</option>
-                                                    <option value="/levels/industrial/info.json">Industrial</option>
-                                                    <option value="/levels/small_island/info.json">Small Island</option>
-                                                    <option value="/levels/smallgrid/info.json">Small Grid</option>
-                                                    <option value="/levels/utah/info.json">Utah</option>
-                                                    <option value="/levels/west_coast_usa/info.json">West Coast USA</option>
-                                                    <option value="/levels/driver_training/info.json">Driver Training</option>
-                                                    <option value="/levels/derby/info.json">Derby</option>
-                                                </select>
+                                                <div class="dropdown" id="mapDropdownContainer">
+                                                    <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="mapDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <span id="selectedMapName">Select a map</span>
+                                                        <span id="selectedMapPath" class="text-muted small ms-2"></span>
+                                                    </button>
+                                                    <ul class="dropdown-menu w-100" id="mapDropdownMenu" aria-labelledby="mapDropdown">
+                                                        <!-- Map options will be populated by JS -->
+                                                    </ul>
+                                                    <input type="hidden" id="Map" data-section="General">
+                                                </div>
                                                 <div class="field-description">Select the map your server will host</div>
                                             </div>
                                         </div>
@@ -338,6 +370,18 @@
                                                     <i class="fas fa-tags me-1"></i>Select Tags
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Custom Server Mods</label>
+                                                <input type="text" class="form-control" id="Mods" data-section="General" placeholder="mod1,mod2,mod3">
+                                                <div class="field-description">Comma-separated list of custom mod folder names</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- Empty column for consistent spacing -->
                                         </div>
                                     </div>
                                 </div>
@@ -376,67 +420,95 @@
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="SendErrorsShowMessage" data-section="Misc">
-                                                    <label class="form-check-label field-label" for="SendErrorsShowMessage">Show Error Messages</label>
-                                                </div>
-                                                <div class="field-description">Show error messages on startup</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="SendErrorsShowMessage" data-section="Misc">
+                                                <label class="form-check-label field-label" for="SendErrorsShowMessage">Show Error Messages</label>
                                             </div>
+                                            <div class="field-description">Show error messages on startup</div>
                                         </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="SendErrors" data-section="Misc">
-                                                    <label class="form-check-label field-label" for="SendErrors">Send Errors</label>
-                                                </div>
-                                                <div class="field-description">Send error reports to BeamMP developers</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="SendErrors" data-section="Misc">
+                                                <label class="form-check-label field-label" for="SendErrors">Send Errors</label>
                                             </div>
+                                            <div class="field-description">Send error reports to BeamMP developers</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="ImScaredOfUpdates" data-section="Misc">
-                                                    <label class="form-check-label field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
-                                                </div>
-                                                <div class="field-description">Hide periodic update notifications</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="ImScaredOfUpdates" data-section="Misc">
+                                                <label class="form-check-label field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
                                             </div>
+                                            <div class="field-description">Hide periodic update notifications</div>
                                         </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="Private" data-section="General">
-                                                    <label class="form-check-label field-label" for="Private">Private Server</label>
-                                                </div>
-                                                <div class="field-description">Whether the server is private</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="Private" data-section="General">
+                                                <label class="form-check-label field-label" for="Private">Private Server</label>
                                             </div>
+                                            <div class="field-description">Whether the server is private</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
-                                                    <label class="form-check-label field-label" for="Debug">Debug Mode</label>
-                                                </div>
-                                                <div class="field-description">Enable debug logging</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
+                                                <label class="form-check-label field-label" for="Debug">Debug Mode</label>
                                             </div>
+                                            <div class="field-description">Enable debug logging</div>
                                         </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
-                                                    <label class="form-check-label field-label" for="LogChat">Log Chat</label>
-                                                </div>
-                                                <div class="field-description">Log chat messages to console</div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
+                                                <label class="form-check-label field-label" for="LogChat">Log Chat</label>
                                             </div>
+                                            <div class="field-description">Log chat messages to console</div>
                                         </div>
                                         <div class="col-md-6">
                                             <!-- Empty column for consistent spacing -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Server Management Section -->
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-server me-2"></i>Server Management
+                                </div>
+                                <div class="p-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Server Status</label>
+                                                <div class="d-flex align-items-center">
+                                                    <span id="serverStatus" class="badge bg-secondary me-2">Unknown</span>
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">
+                                                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                                                    </button>
+                                                </div>
+                                                <div class="field-description">Current status of the BeamMP server container</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Server Actions</label>
+                                                <button type="button" class="btn btn-warning" onclick="restartServer()" id="restartBtn">
+                                                    <i class="fas fa-redo me-2"></i>Restart Server
+                                                </button>
+                                                <div class="field-description">Restart the BeamMP server container</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div id="serverInfo" class="alert alert-info" style="display: none;">
+                                                <h6 class="alert-heading">Server Information</h6>
+                                                <div id="serverInfoContent"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -824,13 +896,64 @@
             autoSave: true,
             backupRetention: 30
         };
+        let appConfig = {
+            defaultMaps: [],
+            defaultTags: {},
+            appDefaults: {},
+            serverDefaults: {}
+        };
 
         // Load configuration on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadCurrentConfig();
             loadBackups();
             loadAppSettings();
+            loadAppConfig();
+            
+            // Check server status after a short delay
+            setTimeout(() => {
+                checkServerStatus();
+            }, 1000);
         });
+
+        async function loadAppConfig() {
+            try {
+                const response = await fetch('/api/app-config');
+                appConfig = await response.json();
+                updateMapDropdown();
+                updateTagModal();
+            } catch (error) {
+                console.error('Error loading app config:', error);
+                // Fallback to hardcoded defaults if API fails
+                loadFallbackDefaults();
+            }
+        }
+
+        function loadFallbackDefaults() {
+            // Fallback defaults if API fails
+            appConfig = {
+                defaultMaps: [
+                    { name: 'Gridmap v2', path: '/levels/gridmap_v2/info.json' },
+                    { name: 'Johnson Valley', path: '/levels/johnson_valley/info.json' },
+                    { name: 'Automation Test Track', path: '/levels/automation_test_track/info.json' },
+                    { name: 'East Coast USA', path: '/levels/east_coast_usa/info.json' },
+                    { name: 'Hirochi Raceway', path: '/levels/hirochi_raceway/info.json' },
+                    { name: 'Italy', path: '/levels/italy/info.json' },
+                    { name: 'Jungle Rock Island', path: '/levels/jungle_rock_island/info.json' },
+                    { name: 'Industrial', path: '/levels/industrial/info.json' },
+                    { name: 'Small Island', path: '/levels/small_island/info.json' },
+                    { name: 'Small Grid', path: '/levels/smallgrid/info.json' },
+                    { name: 'Utah', path: '/levels/utah/info.json' },
+                    { name: 'West Coast USA', path: '/levels/west_coast_usa/info.json' },
+                    { name: 'Driver Training', path: '/levels/driver_training/info.json' },
+                    { name: 'Derby', path: '/levels/derby/info.json' }
+                ],
+                defaultTags: {},
+                appDefaults: {},
+                serverDefaults: {}
+            };
+            updateMapDropdown();
+        }
 
         function loadAppSettings() {
             const saved = localStorage.getItem('beammpConfiguratorSettings');
@@ -904,111 +1027,107 @@
         }
 
         function updateMapDropdown() {
-            const mapSelect = document.getElementById('Map');
-            const currentValue = mapSelect.value;
+            const mapDropdownMenu = document.getElementById('mapDropdownMenu');
+            const selectedMapName = document.getElementById('selectedMapName');
+            const selectedMapPath = document.getElementById('selectedMapPath');
+            const mapInput = document.getElementById('Map');
+            const currentValue = mapInput.value;
             
             // Clear existing options
-            mapSelect.innerHTML = '';
+            mapDropdownMenu.innerHTML = '';
             
             // Add default maps
-            const defaultMaps = [
-                { name: 'Gridmap v2', path: '/levels/gridmap_v2/info.json' },
-                { name: 'Johnson Valley', path: '/levels/johnson_valley/info.json' },
-                { name: 'Automation Test Track', path: '/levels/automation_test_track/info.json' },
-                { name: 'East Coast USA', path: '/levels/east_coast_usa/info.json' },
-                { name: 'Hirochi Raceway', path: '/levels/hirochi_raceway/info.json' },
-                { name: 'Italy', path: '/levels/italy/info.json' },
-                { name: 'Jungle Rock Island', path: '/levels/jungle_rock_island/info.json' },
-                { name: 'Industrial', path: '/levels/industrial/info.json' },
-                { name: 'Small Island', path: '/levels/small_island/info.json' },
-                { name: 'Small Grid', path: '/levels/smallgrid/info.json' },
-                { name: 'Utah', path: '/levels/utah/info.json' },
-                { name: 'West Coast USA', path: '/levels/west_coast_usa/info.json' },
-                { name: 'Driver Training', path: '/levels/driver_training/info.json' },
-                { name: 'Derby', path: '/levels/derby/info.json' }
-            ];
+            const defaultMaps = appConfig.defaultMaps;
             
             // Add default maps
             defaultMaps.forEach(map => {
-                const option = document.createElement('option');
-                option.value = map.path;
-                option.textContent = map.name;
-                mapSelect.appendChild(option);
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-value="${map.path}"><span>${map.name}</span><span class='text-muted small ms-2'>${map.path}</span></a>`;
+                mapDropdownMenu.appendChild(li);
             });
             
             // Add custom maps
             appSettings.customMaps.forEach(mapLine => {
                 const parts = mapLine.split('|');
                 if (parts.length === 2) {
-                    const option = document.createElement('option');
-                    option.value = parts[1].trim();
-                    option.textContent = parts[0].trim();
-                    mapSelect.appendChild(option);
+                    const name = parts[0].trim();
+                    const path = parts[1].trim();
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-value="${path}"><span>${name}</span><span class='text-muted small ms-2'>${path}</span></a>`;
+                    mapDropdownMenu.appendChild(li);
                 }
             });
             
-            // Restore current value if it still exists
-            if (currentValue) {
-                mapSelect.value = currentValue;
+            // Handle selection
+            mapDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const name = this.querySelector('span').textContent;
+                    const path = this.getAttribute('data-value');
+                    selectedMapName.textContent = name;
+                    selectedMapPath.textContent = path;
+                    mapInput.value = path;
+                });
+            });
+            
+            // Set current value
+            let found = false;
+            mapDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
+                if (item.getAttribute('data-value') === currentValue) {
+                    const name = item.querySelector('span').textContent;
+                    selectedMapName.textContent = name;
+                    selectedMapPath.textContent = currentValue;
+                    found = true;
+                }
+            });
+            if (!found) {
+                selectedMapName.textContent = 'Select a map';
+                selectedMapPath.textContent = '';
             }
         }
 
         function updateTagModal() {
-            // This would update the tag modal with custom tags
-            // For now, we'll just show a message
-            showAlert('Custom tags will be available in the tag selection modal', 'info');
-        }
-
-        function resetAppSettings() {
-            if (confirm('Are you sure you want to reset all app settings? This cannot be undone.')) {
-                appSettings = {
-                    theme: 'dark',
-                    customMaps: [],
-                    customTags: [],
-                    autoSave: true,
-                    backupRetention: 30
-                };
-                localStorage.removeItem('beammpConfiguratorSettings');
-                loadAppSettings();
-                showAlert('App settings reset to defaults', 'success');
+            const tagModalBody = document.querySelector('#tagsModal .modal-body');
+            if (!tagModalBody) return;
+            
+            // Clear existing content except the first paragraph
+            const firstParagraph = tagModalBody.querySelector('p');
+            tagModalBody.innerHTML = '';
+            if (firstParagraph) {
+                tagModalBody.appendChild(firstParagraph);
             }
-        }
-
-        async function loadCurrentConfig() {
-            try {
-                const response = await fetch('/api/config');
-                currentConfig = await response.json();
-                populateForm(currentConfig);
-            } catch (error) {
-                showAlert('Error loading configuration: ' + error.message, 'danger');
-            }
-        }
-
-        function populateForm(config) {
-            // Clear all form fields first
-            document.querySelectorAll('input[data-section], select[data-section]').forEach(input => {
-                const section = input.dataset.section;
-                const field = input.id;
+            
+            // Add tags from configuration
+            Object.entries(appConfig.defaultTags || {}).forEach(([category, tags]) => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'mb-3';
                 
-                if (config[section] && config[section][field] !== undefined) {
-                    if (input.type === 'checkbox') {
-                        input.checked = config[section][field];
-                    } else {
-                        input.value = config[section][field];
-                    }
-                }
+                const categoryTitle = document.createElement('h6');
+                categoryTitle.className = 'fw-bold text-primary';
+                categoryTitle.textContent = category;
+                categoryDiv.appendChild(categoryTitle);
+                
+                const tagsContainer = document.createElement('div');
+                tagsContainer.className = 'row';
+                
+                tags.forEach(tag => {
+                    const tagDiv = document.createElement('div');
+                    tagDiv.className = 'col-md-6';
+                    tagDiv.innerHTML = `
+                        <div class="form-check">
+                            <input class="form-check-input tag-checkbox" type="checkbox" value="${tag}" id="tag-${tag.toLowerCase().replace(/[^a-z0-9]/g, '-')}">
+                            <label class="form-check-label" for="tag-${tag.toLowerCase().replace(/[^a-z0-9]/g, '-')}">${tag}</label>
+                        </div>
+                    `;
+                    tagsContainer.appendChild(tagDiv);
+                });
+                
+                categoryDiv.appendChild(tagsContainer);
+                tagModalBody.appendChild(categoryDiv);
             });
-
-            // Handle tags specifically
-            if (config.General && config.General.Tags) {
-                selectedTags = config.General.Tags.split(',').map(tag => tag.trim());
-                updateTagsDisplay();
-                updateTagCheckboxes();
-            }
-        }
-
-        function updateTagsDisplay() {
-            document.getElementById('Tags').value = selectedTags.join(', ');
+            
+            // Update checkboxes for selected tags
+            updateTagCheckboxes();
         }
 
         function updateTagCheckboxes() {
@@ -1140,6 +1259,199 @@
                 }
             });
         });
+
+        function resetAppSettings() {
+            if (confirm('Are you sure you want to reset all app settings? This cannot be undone.')) {
+                appSettings = {
+                    theme: 'dark',
+                    customMaps: [],
+                    customTags: [],
+                    autoSave: true,
+                    backupRetention: 30
+                };
+                localStorage.removeItem('beammpConfiguratorSettings');
+                loadAppSettings();
+                showAlert('App settings reset to defaults', 'success');
+            }
+        }
+
+        async function loadCurrentConfig() {
+            try {
+                const response = await fetch('/api/config');
+                currentConfig = await response.json();
+                populateForm(currentConfig);
+            } catch (error) {
+                showAlert('Error loading configuration: ' + error.message, 'danger');
+            }
+        }
+
+        function populateForm(config) {
+            // Clear all form fields first
+            document.querySelectorAll('input[data-section], select[data-section]').forEach(input => {
+                const section = input.dataset.section;
+                const field = input.id;
+                
+                if (config[section] && config[section][field] !== undefined) {
+                    if (input.type === 'checkbox') {
+                        input.checked = config[section][field];
+                    } else {
+                        input.value = config[section][field];
+                    }
+                }
+            });
+
+            // Handle tags specifically
+            if (config.General && config.General.Tags) {
+                selectedTags = config.General.Tags.split(',').map(tag => tag.trim());
+                updateTagsDisplay();
+                updateTagCheckboxes();
+            }
+        }
+
+        function updateTagsDisplay() {
+            document.getElementById('Tags').value = selectedTags.join(', ');
+        }
+
+        // Server Management Functions
+        async function checkServerStatus() {
+            const statusElement = document.getElementById('serverStatus');
+            const infoElement = document.getElementById('serverInfo');
+            const infoContent = document.getElementById('serverInfoContent');
+            
+            try {
+                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Checking...';
+                statusElement.className = 'badge bg-secondary me-2';
+                
+                const response = await fetch('/api/server-status');
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update status badge
+                    let statusClass = 'bg-secondary';
+                    let statusText = result.status;
+                    
+                    switch (result.status) {
+                        case 'running':
+                            statusClass = 'bg-success';
+                            statusText = 'Running';
+                            break;
+                        case 'exited':
+                            statusClass = 'bg-danger';
+                            statusText = 'Stopped';
+                            break;
+                        case 'paused':
+                            statusClass = 'bg-warning';
+                            statusText = 'Paused';
+                            break;
+                        case 'restarting':
+                            statusClass = 'bg-info';
+                            statusText = 'Restarting';
+                            break;
+                    }
+                    
+                    statusElement.className = `badge ${statusClass} me-2`;
+                    statusElement.textContent = statusText;
+                    
+                    // Show server information
+                    infoContent.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Container Name:</strong> ${result.container_name}<br>
+                                <strong>Container ID:</strong> ${result.container_id}<br>
+                                <strong>Status:</strong> ${result.status}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Image:</strong> ${result.image}<br>
+                                <strong>Created:</strong> ${new Date(result.created).toLocaleString()}
+                            </div>
+                        </div>
+                    `;
+                    infoElement.style.display = 'block';
+                    
+                } else {
+                    statusElement.className = 'badge bg-warning me-2';
+                    statusText = 'Unavailable';
+                    
+                    if (result.message.includes('Docker module not available')) {
+                        statusText = 'Docker Not Available';
+                        infoContent.innerHTML = `
+                            <div class="alert alert-warning mb-0">
+                                <strong>Docker Module Not Installed:</strong> Server management features require the Docker Python module. 
+                                Install it with: <code>pip install docker</code>
+                            </div>
+                        `;
+                    } else if (result.message.includes('Docker client not available')) {
+                        statusText = 'Docker Not Connected';
+                        infoContent.innerHTML = `
+                            <div class="alert alert-warning mb-0">
+                                <strong>Docker Not Connected:</strong> Cannot connect to Docker daemon. 
+                                Ensure Docker is running and accessible.
+                            </div>
+                        `;
+                    } else {
+                        statusText = 'Error';
+                        infoContent.innerHTML = `<strong>Error:</strong> ${result.message}`;
+                    }
+                    
+                    statusElement.textContent = statusText;
+                    infoElement.style.display = 'block';
+                }
+                
+            } catch (error) {
+                statusElement.className = 'badge bg-danger me-2';
+                statusElement.textContent = 'Error';
+                
+                infoContent.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                infoElement.style.display = 'block';
+            }
+        }
+
+        async function restartServer() {
+            const restartBtn = document.getElementById('restartBtn');
+            const originalText = restartBtn.innerHTML;
+            
+            if (!confirm('Are you sure you want to restart the BeamMP server? This will disconnect all players.')) {
+                return;
+            }
+            
+            try {
+                restartBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Restarting...';
+                restartBtn.disabled = true;
+                
+                const response = await fetch('/api/restart-server', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`Server restart initiated: ${result.message}`, 'success');
+                    
+                    // Wait a moment then check status
+                    setTimeout(() => {
+                        checkServerStatus();
+                    }, 2000);
+                    
+                } else {
+                    let errorMessage = result.message;
+                    if (result.message.includes('Docker module not available')) {
+                        errorMessage = 'Docker module not installed. Install with: pip install docker';
+                    } else if (result.message.includes('Docker client not available')) {
+                        errorMessage = 'Docker not connected. Ensure Docker is running.';
+                    }
+                    showAlert(`Failed to restart server: ${errorMessage}`, 'danger');
+                }
+                
+            } catch (error) {
+                showAlert(`Error restarting server: ${error.message}`, 'danger');
+            } finally {
+                restartBtn.innerHTML = originalText;
+                restartBtn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html> 
