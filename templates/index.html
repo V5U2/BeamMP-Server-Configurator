@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeamMP Server Configurator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .section-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .section-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 10px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        .form-check-input:checked {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .nav-tabs {
+            border-bottom: 2px solid #e9ecef;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 10px 10px 0 0;
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+        }
+        .loading {
+            display: none;
+        }
+        .field-group {
+            margin-bottom: 1rem;
+        }
+        .field-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        .field-description {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                <div class="main-container">
+                    <div class="text-center mb-4">
+                        <h1 class="display-5 fw-bold text-primary mb-2">
+                            <i class="fas fa-server me-2"></i>BeamMP Server Configurator
+                        </h1>
+                        <p class="text-muted">Configure your BeamMP server settings with ease</p>
+                    </div>
+
+                    <div id="alert-container"></div>
+
+                    <ul class="nav nav-tabs" id="configTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                                <i class="fas fa-cog me-2"></i>General Settings
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="misc-tab" data-bs-toggle="tab" data-bs-target="#misc" type="button" role="tab">
+                                <i class="fas fa-tools me-2"></i>Misc Settings
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups" type="button" role="tab">
+                                <i class="fas fa-history me-2"></i>Backups
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content mt-4" id="configTabContent">
+                        <!-- General Settings Tab -->
+                        <div class="tab-pane fade show active" id="general" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-server me-2"></i>Server Configuration
+                                </div>
+                                <div class="p-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Server Name</label>
+                                                <input type="text" class="form-control" id="Name" data-section="General">
+                                                <div class="field-description">The name of your server as it appears in the server list</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Description</label>
+                                                <input type="text" class="form-control" id="Description" data-section="General">
+                                                <div class="field-description">Brief description of your server</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Port</label>
+                                                <input type="number" class="form-control" id="Port" data-section="General">
+                                                <div class="field-description">The port your server runs on (default: 30814)</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Max Players</label>
+                                                <input type="number" class="form-control" id="MaxPlayers" data-section="General">
+                                                <div class="field-description">Maximum number of players allowed on the server</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Max Cars</label>
+                                                <input type="number" class="form-control" id="MaxCars" data-section="General">
+                                                <div class="field-description">Maximum number of cars per player</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Map</label>
+                                                <input type="text" class="form-control" id="Map" data-section="General">
+                                                <div class="field-description">Path to the map file (e.g., /levels/utah/info.json)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Resource Folder</label>
+                                                <input type="text" class="form-control" id="ResourceFolder" data-section="General">
+                                                <div class="field-description">Folder containing server resources</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Tags</label>
+                                                <input type="text" class="form-control" id="Tags" data-section="General">
+                                                <div class="field-description">Comma-separated tags for server identification</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Auth Key</label>
+                                                <input type="text" class="form-control" id="AuthKey" data-section="General">
+                                                <div class="field-description">Your BeamMP authentication key from keymaster.beammp.com</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="Private" data-section="General">
+                                                    <label class="form-check-label field-label" for="Private">Private Server</label>
+                                                </div>
+                                                <div class="field-description">Whether the server is private</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
+                                                    <label class="form-check-label field-label" for="Debug">Debug Mode</label>
+                                                </div>
+                                                <div class="field-description">Enable debug logging</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
+                                                    <label class="form-check-label field-label" for="LogChat">Log Chat</label>
+                                                </div>
+                                                <div class="field-description">Log chat messages to console</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Misc Settings Tab -->
+                        <div class="tab-pane fade" id="misc" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-tools me-2"></i>Miscellaneous Settings
+                                </div>
+                                <div class="p-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="SendErrorsShowMessage" data-section="Misc">
+                                                    <label class="form-check-label field-label" for="SendErrorsShowMessage">Show Error Messages</label>
+                                                </div>
+                                                <div class="field-description">Show error messages on startup</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="SendErrors" data-section="Misc">
+                                                    <label class="form-check-label field-label" for="SendErrors">Send Errors</label>
+                                                </div>
+                                                <div class="field-description">Send error reports to BeamMP developers</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="ImScaredOfUpdates" data-section="Misc">
+                                                    <label class="form-check-label field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
+                                                </div>
+                                                <div class="field-description">Hide periodic update notifications</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Backups Tab -->
+                        <div class="tab-pane fade" id="backups" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-history me-2"></i>Configuration Backups
+                                </div>
+                                <div class="p-4">
+                                    <div id="backups-list">
+                                        <div class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Loading...</span>
+                                            </div>
+                                            <p class="mt-2">Loading backups...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" onclick="saveConfig()">
+                            <i class="fas fa-save me-2"></i>Save Configuration
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg ms-2" onclick="loadCurrentConfig()">
+                            <i class="fas fa-refresh me-2"></i>Reload
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentConfig = {};
+
+        // Load configuration on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentConfig();
+            loadBackups();
+        });
+
+        async function loadCurrentConfig() {
+            try {
+                const response = await fetch('/api/config');
+                currentConfig = await response.json();
+                populateForm(currentConfig);
+            } catch (error) {
+                showAlert('Error loading configuration: ' + error.message, 'danger');
+            }
+        }
+
+        function populateForm(config) {
+            // Clear all form fields first
+            document.querySelectorAll('input[data-section]').forEach(input => {
+                const section = input.dataset.section;
+                const field = input.id;
+                
+                if (config[section] && config[section][field] !== undefined) {
+                    if (input.type === 'checkbox') {
+                        input.checked = config[section][field];
+                    } else {
+                        input.value = config[section][field];
+                    }
+                }
+            });
+        }
+
+        async function saveConfig() {
+            const saveButton = document.querySelector('button[onclick="saveConfig()"]');
+            const originalText = saveButton.innerHTML;
+            
+            try {
+                saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+                saveButton.disabled = true;
+
+                // Collect form data
+                const config = {};
+                document.querySelectorAll('input[data-section]').forEach(input => {
+                    const section = input.dataset.section;
+                    const field = input.id;
+                    
+                    if (!config[section]) {
+                        config[section] = {};
+                    }
+                    
+                    if (input.type === 'checkbox') {
+                        config[section][field] = input.checked;
+                    } else {
+                        config[section][field] = input.value;
+                    }
+                });
+
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    currentConfig = config;
+                } else {
+                    showAlert(result.message, 'danger');
+                }
+            } catch (error) {
+                showAlert('Error saving configuration: ' + error.message, 'danger');
+            } finally {
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+            }
+        }
+
+        async function loadBackups() {
+            try {
+                const response = await fetch('/backups');
+                const html = await response.text();
+                
+                // Extract the backups list from the response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const backupsList = doc.querySelector('#backups-list');
+                
+                if (backupsList) {
+                    document.getElementById('backups-list').innerHTML = backupsList.innerHTML;
+                }
+            } catch (error) {
+                document.getElementById('backups-list').innerHTML = 
+                    '<div class="alert alert-danger">Error loading backups: ' + error.message + '</div>';
+            }
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alert-container');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHtml = `
+                <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            
+            alertContainer.innerHTML = alertHtml;
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = document.getElementById(alertId);
+                if (alert) {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 5000);
+        }
+
+        // Handle tab changes to load backups when needed
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', function (event) {
+                if (event.target.id === 'backups-tab') {
+                    loadBackups();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
