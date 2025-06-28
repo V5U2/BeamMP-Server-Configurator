@@ -5,20 +5,46 @@ from datetime import datetime
 import json
 
 app = Flask(__name__)
-app.secret_key = 'beammp_config_secret_key_2024'
+app.secret_key = os.environ.get('SECRET_KEY', 'beammp_config_secret_key_2024')
 
-CONFIG_FILE = 'ServerConfig.toml'
-BACKUP_DIR = 'backups'
+# Configuration from environment variables
+CONFIG_DIR = os.environ.get('CONFIG_DIR', '.')
+BACKUP_DIR = os.environ.get('BACKUP_DIR', 'backups')
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'ServerConfig.toml')
 
-# Ensure backup directory exists
-if not os.path.exists(BACKUP_DIR):
-    os.makedirs(BACKUP_DIR)
+# Ensure directories exist
+for directory in [BACKUP_DIR, CONFIG_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 def load_config():
     """Load the TOML configuration file"""
     try:
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             return toml.load(f)
+    except FileNotFoundError:
+        # Return default config if file doesn't exist
+        return {
+            'General': {
+                'Name': 'BeamMP Server',
+                'Description': 'BeamMP Server',
+                'Port': 30814,
+                'MaxPlayers': 8,
+                'MaxCars': 10,
+                'Map': '/levels/utah/info.json',
+                'ResourceFolder': 'Resources',
+                'Tags': 'Freeroam',
+                'AuthKey': '',
+                'Private': True,
+                'Debug': False,
+                'LogChat': False
+            },
+            'Misc': {
+                'SendErrorsShowMessage': False,
+                'SendErrors': False,
+                'ImScaredOfUpdates': False
+            }
+        }
     except Exception as e:
         print(f"Error loading config: {e}")
         return {}
@@ -129,5 +155,28 @@ def restore_backup(filename):
     
     return redirect(url_for('list_backups'))
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for container orchestration"""
+    try:
+        # Try to load config to ensure the app is working
+        load_config()
+        return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    # Get port from environment variable or default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Get host from environment variable or default to 0.0.0.0 for containers
+    host = os.environ.get('HOST', '0.0.0.0')
+    
+    # Set debug mode based on environment
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    print(f"Starting BeamMP Configurator on {host}:{port}")
+    print(f"Config file: {CONFIG_FILE}")
+    print(f"Backup directory: {BACKUP_DIR}")
+    
+    app.run(debug=debug, host=host, port=port) 

@@ -1,0 +1,166 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beammp-configurator-config
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        upstream beammp_configurator {
+            server beammp-configurator:5000;
+        }
+        
+        server {
+            listen 80;
+            server_name localhost;
+            
+            location / {
+                proxy_pass http://beammp_configurator;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beammp-configurator
+  labels:
+    app: beammp-configurator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beammp-configurator
+  template:
+    metadata:
+      labels:
+        app: beammp-configurator
+    spec:
+      containers:
+      - name: beammp-configurator
+        image: beammp-configurator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: CONFIG_DIR
+          value: "/app/configs"
+        - name: BACKUP_DIR
+          value: "/app/backups"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: beammp-configurator-secret
+              key: secret-key
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/configs
+          readOnly: true
+        - name: backup-volume
+          mountPath: /app/backups
+        - name: logs-volume
+          mountPath: /app/logs
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config-volume
+        persistentVolumeClaim:
+          claimName: beammp-config-pvc
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: beammp-backup-pvc
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: beammp-logs-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beammp-configurator-service
+spec:
+  selector:
+    app: beammp-configurator
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 5000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beammp-config-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beammp-backup-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beammp-logs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: beammp-configurator-secret
+type: Opaque
+data:
+  secret-key: YmVhbW1tcF9jb25maWdfc2VjcmV0X2tleV8yMDI0 # base64 encoded secret key
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: beammp-configurator-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: beammp-configurator.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: beammp-configurator-service
+            port:
+              number: 80 

@@ -7,28 +7,42 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-card: #2a2a2a;
+            --bg-container: rgba(45, 45, 45, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent-color: #ff6b35;
+            --border-color: #404040;
+        }
+
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-primary);
         }
         .main-container {
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--bg-container);
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
             margin: 2rem auto;
             padding: 2rem;
+            border: 1px solid var(--border-color);
         }
         .section-card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             margin-bottom: 1.5rem;
             overflow: hidden;
+            border: 1px solid var(--border-color);
         }
         .section-header {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, var(--accent-color), #f7931e);
             color: white;
             padding: 1rem 1.5rem;
             font-weight: 600;
@@ -36,46 +50,77 @@
         }
         .form-control, .form-select {
             border-radius: 10px;
-            border: 2px solid #e9ecef;
+            border: 2px solid var(--border-color);
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
             transition: all 0.3s ease;
         }
         .form-control:focus, .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
+            background-color: var(--bg-card);
+        }
+        .form-control::placeholder {
+            color: var(--text-secondary);
         }
         .btn-primary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, var(--accent-color), #f7931e);
             border: none;
             border-radius: 10px;
             padding: 0.75rem 2rem;
             font-weight: 600;
             transition: all 0.3s ease;
+            color: white;
         }
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
+            background: linear-gradient(45deg, #f7931e, var(--accent-color));
+        }
+        .btn-outline-primary {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+        .btn-outline-primary:hover {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+        }
+        .btn-outline-secondary {
+            border-color: #666666;
+            color: #cccccc;
+        }
+        .btn-outline-secondary:hover {
+            background-color: #666666;
+            border-color: #666666;
+            color: white;
         }
         .form-check-input:checked {
-            background-color: #667eea;
-            border-color: #667eea;
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
         }
         .alert {
             border-radius: 10px;
             border: none;
         }
         .nav-tabs {
-            border-bottom: 2px solid #e9ecef;
+            border-bottom: 2px solid var(--border-color);
         }
         .nav-tabs .nav-link {
             border: none;
             border-radius: 10px 10px 0 0;
-            color: #6c757d;
+            color: var(--text-secondary);
             font-weight: 500;
+            background-color: transparent;
         }
         .nav-tabs .nav-link.active {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, var(--accent-color), #f7931e);
             color: white;
             border: none;
+        }
+        .nav-tabs .nav-link:hover {
+            color: var(--accent-color);
+            background-color: rgba(255, 107, 53, 0.1);
         }
         .loading {
             display: none;
@@ -85,13 +130,99 @@
         }
         .field-label {
             font-weight: 600;
-            color: #495057;
+            color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
         .field-description {
             font-size: 0.875rem;
-            color: #6c757d;
+            color: var(--text-secondary);
             margin-top: 0.25rem;
+        }
+        .text-primary {
+            color: var(--accent-color) !important;
+        }
+        .text-muted {
+            color: var(--text-secondary) !important;
+        }
+        .modal-content {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .modal-header {
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(45deg, var(--accent-color), #f7931e);
+            color: white;
+        }
+        .modal-footer {
+            border-top: 1px solid var(--border-color);
+        }
+        .form-check-label {
+            color: var(--text-primary);
+        }
+        .form-check-input {
+            background-color: var(--bg-secondary);
+            border-color: var(--border-color);
+        }
+        .form-check-input:checked {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+        .btn-close {
+            filter: invert(1);
+        }
+        .spinner-border.text-primary {
+            color: var(--accent-color) !important;
+        }
+        .backup-item {
+            background: var(--bg-card);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+        .backup-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-color);
+        }
+        .btn-restore {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+        }
+        .btn-restore:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        .alert-success {
+            background-color: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        .alert-danger {
+            background-color: rgba(244, 67, 54, 0.2);
+            border: 1px solid #f44336;
+            color: #f44336;
+        }
+        .alert-warning {
+            background-color: rgba(255, 152, 0, 0.2);
+            border: 1px solid #ff9800;
+            color: #ff9800;
+        }
+        .alert-info {
+            background-color: rgba(33, 150, 243, 0.2);
+            border: 1px solid #2196f3;
+            color: #2196f3;
+        }
+        hr {
+            border-color: var(--border-color);
+        }
+        .fw-bold.text-primary {
+            color: var(--accent-color) !important;
         }
     </style>
 </head>
@@ -105,6 +236,9 @@
                             <i class="fas fa-server me-2"></i>BeamMP Server Configurator
                         </h1>
                         <p class="text-muted">Configure your BeamMP server settings with ease</p>
+                        <a href="https://docs.beammp.com/server/server-maintenance/#the-serverconfig-file" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-book me-1"></i>View Official Documentation
+                        </a>
                     </div>
 
                     <div id="alert-container"></div>
@@ -117,12 +251,17 @@
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="misc-tab" data-bs-toggle="tab" data-bs-target="#misc" type="button" role="tab">
-                                <i class="fas fa-tools me-2"></i>Misc Settings
+                                <i class="fas fa-tools me-2"></i>Advanced Settings
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups" type="button" role="tab">
                                 <i class="fas fa-history me-2"></i>Backups
+                            </button>
+                        </li>
+                        <li class="nav-item ms-auto" role="presentation">
+                            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                                <i class="fas fa-cog me-2"></i>App Settings
                             </button>
                         </li>
                     </ul>
@@ -154,20 +293,11 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
-                                                <label class="field-label">Port</label>
-                                                <input type="number" class="form-control" id="Port" data-section="General">
-                                                <div class="field-description">The port your server runs on (default: 30814)</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="field-group">
                                                 <label class="field-label">Max Players</label>
                                                 <input type="number" class="form-control" id="MaxPlayers" data-section="General">
                                                 <div class="field-description">Maximum number of players allowed on the server</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label">Max Cars</label>
@@ -175,27 +305,65 @@
                                                 <div class="field-description">Maximum number of cars per player</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="field-group">
-                                                <label class="field-label">Map</label>
-                                                <input type="text" class="form-control" id="Map" data-section="General">
-                                                <div class="field-description">Path to the map file (e.g., /levels/utah/info.json)</div>
-                                            </div>
-                                        </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
-                                                <label class="field-label">Resource Folder</label>
-                                                <input type="text" class="form-control" id="ResourceFolder" data-section="General">
-                                                <div class="field-description">Folder containing server resources</div>
+                                                <label class="field-label">Map</label>
+                                                <select class="form-select" id="Map" data-section="General">
+                                                    <option value="/levels/gridmap_v2/info.json">Gridmap v2</option>
+                                                    <option value="/levels/johnson_valley/info.json">Johnson Valley</option>
+                                                    <option value="/levels/automation_test_track/info.json">Automation Test Track</option>
+                                                    <option value="/levels/east_coast_usa/info.json">East Coast USA</option>
+                                                    <option value="/levels/hirochi_raceway/info.json">Hirochi Raceway</option>
+                                                    <option value="/levels/italy/info.json">Italy</option>
+                                                    <option value="/levels/jungle_rock_island/info.json">Jungle Rock Island</option>
+                                                    <option value="/levels/industrial/info.json">Industrial</option>
+                                                    <option value="/levels/small_island/info.json">Small Island</option>
+                                                    <option value="/levels/smallgrid/info.json">Small Grid</option>
+                                                    <option value="/levels/utah/info.json">Utah</option>
+                                                    <option value="/levels/west_coast_usa/info.json">West Coast USA</option>
+                                                    <option value="/levels/driver_training/info.json">Driver Training</option>
+                                                    <option value="/levels/derby/info.json">Derby</option>
+                                                </select>
+                                                <div class="field-description">Select the map your server will host</div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label">Tags</label>
-                                                <input type="text" class="form-control" id="Tags" data-section="General">
-                                                <div class="field-description">Comma-separated tags for server identification</div>
+                                                <input type="text" class="form-control" id="Tags" data-section="General" readonly>
+                                                <div class="field-description">Selected tags for server categorization</div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#tagsModal">
+                                                    <i class="fas fa-tags me-1"></i>Select Tags
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Settings Tab -->
+                        <div class="tab-pane fade" id="misc" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-tools me-2"></i>Advanced Settings
+                                </div>
+                                <div class="p-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Port</label>
+                                                <input type="number" class="form-control" id="Port" data-section="General">
+                                                <div class="field-description">The port your server runs on (default: 30814)</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Resource Folder</label>
+                                                <input type="text" class="form-control" id="ResourceFolder" data-section="General">
+                                                <div class="field-description">Folder containing server resources</div>
                                             </div>
                                         </div>
                                     </div>
@@ -207,48 +375,6 @@
                                                 <div class="field-description">Your BeamMP authentication key from keymaster.beammp.com</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="Private" data-section="General">
-                                                    <label class="form-check-label field-label" for="Private">Private Server</label>
-                                                </div>
-                                                <div class="field-description">Whether the server is private</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
-                                                    <label class="form-check-label field-label" for="Debug">Debug Mode</label>
-                                                </div>
-                                                <div class="field-description">Enable debug logging</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="field-group">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
-                                                    <label class="form-check-label field-label" for="LogChat">Log Chat</label>
-                                                </div>
-                                                <div class="field-description">Log chat messages to console</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Misc Settings Tab -->
-                        <div class="tab-pane fade" id="misc" role="tabpanel">
-                            <div class="section-card">
-                                <div class="section-header">
-                                    <i class="fas fa-tools me-2"></i>Miscellaneous Settings
-                                </div>
-                                <div class="p-4">
-                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <div class="form-check form-switch">
@@ -258,6 +384,8 @@
                                                 <div class="field-description">Show error messages on startup</div>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <div class="form-check form-switch">
@@ -267,8 +395,6 @@
                                                 <div class="field-description">Send error reports to BeamMP developers</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <div class="form-check form-switch">
@@ -277,6 +403,40 @@
                                                 </div>
                                                 <div class="field-description">Hide periodic update notifications</div>
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="Private" data-section="General">
+                                                    <label class="form-check-label field-label" for="Private">Private Server</label>
+                                                </div>
+                                                <div class="field-description">Whether the server is private</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
+                                                    <label class="form-check-label field-label" for="Debug">Debug Mode</label>
+                                                </div>
+                                                <div class="field-description">Enable debug logging</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
+                                                    <label class="form-check-label field-label" for="LogChat">Log Chat</label>
+                                                </div>
+                                                <div class="field-description">Log chat messages to console</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- Empty column for consistent spacing -->
                                         </div>
                                     </div>
                                 </div>
@@ -301,6 +461,79 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- App Settings Tab -->
+                        <div class="tab-pane fade" id="settings" role="tabpanel">
+                            <div class="section-card">
+                                <div class="section-header">
+                                    <i class="fas fa-cog me-2"></i>Application Settings
+                                </div>
+                                <div class="p-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <!-- Theme Selection -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Theme</label>
+                                                <select class="form-select" id="themeSelect" onchange="changeTheme()">
+                                                    <option value="dark">Dark Theme</option>
+                                                    <option value="light">Light Theme</option>
+                                                </select>
+                                                <div class="field-description">Choose your preferred color theme</div>
+                                            </div>
+
+                                            <!-- Auto Save -->
+                                            <div class="field-group mb-4">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="autoSave" checked>
+                                                    <label class="form-check-label field-label" for="autoSave">Auto Save</label>
+                                                </div>
+                                                <div class="field-description">Automatically save changes</div>
+                                            </div>
+
+                                            <!-- Backup Retention -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Backup Retention (days)</label>
+                                                <input type="number" class="form-control" id="backupRetention" value="30" min="1" max="365">
+                                                <div class="field-description">How long to keep backup files</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- Custom Maps -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Custom Maps</label>
+                                                <textarea class="form-control" id="customMaps" rows="4" placeholder="Add custom maps (one per line)&#10;Format: Display Name|/path/to/map/info.json&#10;&#10;Example:&#10;My Custom Map|/levels/custom_map/info.json"></textarea>
+                                                <div class="field-description">Add custom maps to the dropdown</div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="saveCustomMaps()">
+                                                    <i class="fas fa-save me-1"></i>Save Maps
+                                                </button>
+                                            </div>
+
+                                            <!-- Custom Tags -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Custom Tags</label>
+                                                <textarea class="form-control" id="customTags" rows="4" placeholder="Add custom tags (one per line)&#10;Format: Category|Tag Name&#10;&#10;Example:&#10;Custom|MyTag"></textarea>
+                                                <div class="field-description">Add custom tags to the selection</div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="saveCustomTags()">
+                                                    <i class="fas fa-save me-1"></i>Save Tags
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <hr>
+
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="text-center">
+                                                <button type="button" class="btn btn-outline-danger" onclick="resetAppSettings()">
+                                                    <i class="fas fa-undo me-2"></i>Reset All Settings
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="text-center mt-4">
@@ -316,15 +549,430 @@
         </div>
     </div>
 
+    <!-- Tags Modal -->
+    <div class="modal fade" id="tagsModal" tabindex="-1" aria-labelledby="tagsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tagsModalLabel">
+                        <i class="fas fa-tags me-2"></i>Select Server Tags
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Select tags to categorize your server. Multiple tags can be selected.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Age/Content</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Mature/18+" id="tag-mature">
+                                <label class="form-check-label" for="tag-mature">Mature/18+</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Gameplay Types</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Freeroam" id="tag-freeroam">
+                                <label class="form-check-label" for="tag-freeroam">Freeroam</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Roleplay" id="tag-roleplay">
+                                <label class="form-check-label" for="tag-roleplay">Roleplay</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Economy" id="tag-economy">
+                                <label class="form-check-label" for="tag-economy">Economy</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Traffic" id="tag-traffic">
+                                <label class="form-check-label" for="tag-traffic">Traffic</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Racing Categories</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Racing" id="tag-racing">
+                                <label class="form-check-label" for="tag-racing">Racing</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Racing:NASCAR" id="tag-racing-nascar">
+                                <label class="form-check-label" for="tag-racing-nascar">Racing:NASCAR</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Racing:Track" id="tag-racing-track">
+                                <label class="form-check-label" for="tag-racing-track">Racing:Track</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Racing:Drag" id="tag-racing-drag">
+                                <label class="form-check-label" for="tag-racing-drag">Racing:Drag</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Racing:Rally" id="tag-racing-rally">
+                                <label class="form-check-label" for="tag-racing-rally">Racing:Rally</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Touge" id="tag-touge">
+                                <label class="form-check-label" for="tag-touge">Touge</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Off-Roading & Challenges</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Offroad" id="tag-offroad">
+                                <label class="form-check-label" for="tag-offroad">Offroad</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Crawling" id="tag-crawling">
+                                <label class="form-check-label" for="tag-crawling">Crawling</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Dakar" id="tag-dakar">
+                                <label class="form-check-label" for="tag-dakar">Dakar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Challenge" id="tag-challenge">
+                                <label class="form-check-label" for="tag-challenge">Challenge</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Destruction Events</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Derby" id="tag-derby">
+                                <label class="form-check-label" for="tag-derby">Derby</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Arena" id="tag-arena">
+                                <label class="form-check-label" for="tag-arena">Arena</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Weather & Time</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Snow/Ice" id="tag-snow">
+                                <label class="form-check-label" for="tag-snow">Snow/Ice</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Rain" id="tag-rain">
+                                <label class="form-check-label" for="tag-rain">Rain</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Night" id="tag-night">
+                                <label class="form-check-label" for="tag-night">Night</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Weather" id="tag-weather">
+                                <label class="form-check-label" for="tag-weather">Weather</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Gamemodes</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode" id="tag-gamemode">
+                                <label class="form-check-label" for="tag-gamemode">Gamemode</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Racing" id="tag-gamemode-racing">
+                                <label class="form-check-label" for="tag-gamemode-racing">Gamemode:Racing</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Rally" id="tag-gamemode-rally">
+                                <label class="form-check-label" for="tag-gamemode-rally">Gamemode:Rally</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Drag" id="tag-gamemode-drag">
+                                <label class="form-check-label" for="tag-gamemode-drag">Gamemode:Drag</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Derby" id="tag-gamemode-derby">
+                                <label class="form-check-label" for="tag-gamemode-derby">Gamemode:Derby</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Infection" id="tag-gamemode-infection">
+                                <label class="form-check-label" for="tag-gamemode-infection">Gamemode:Infection</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Cops-Robbers" id="tag-gamemode-cops">
+                                <label class="form-check-label" for="tag-gamemode-cops">Gamemode:Cops-Robbers</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Delivery" id="tag-gamemode-delivery">
+                                <label class="form-check-label" for="tag-gamemode-delivery">Gamemode:Delivery</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Gamemode:Sumo" id="tag-gamemode-sumo">
+                                <label class="form-check-label" for="tag-gamemode-sumo">Gamemode:Sumo</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Community & Events</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Scenarios" id="tag-scenarios">
+                                <label class="form-check-label" for="tag-scenarios">Scenarios</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Events" id="tag-events">
+                                <label class="form-check-label" for="tag-events">Events</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Leaderboard" id="tag-leaderboard">
+                                <label class="form-check-label" for="tag-leaderboard">Leaderboard</label>
+                            </div>
+                            
+                            <h6 class="fw-bold text-primary mt-3">Mods</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Modded" id="tag-modded">
+                                <label class="form-check-label" for="tag-modded">Modded</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Mod:BeamPaint" id="tag-mod-beampaint">
+                                <label class="form-check-label" for="tag-mod-beampaint">Mod:BeamPaint</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Mod:BeamJoy" id="tag-mod-beamjoy">
+                                <label class="form-check-label" for="tag-mod-beamjoy">Mod:BeamJoy</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Mod:CEI" id="tag-mod-cei">
+                                <label class="form-check-label" for="tag-mod-cei">Mod:CEI</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Languages</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:English" id="tag-lang-english">
+                                <label class="form-check-label" for="tag-lang-english">Lang:English</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:Russian" id="tag-lang-russian">
+                                <label class="form-check-label" for="tag-lang-russian">Lang:Russian</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:French" id="tag-lang-french">
+                                <label class="form-check-label" for="tag-lang-french">Lang:French</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:Spanish" id="tag-lang-spanish">
+                                <label class="form-check-label" for="tag-lang-spanish">Lang:Spanish</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:Portuguese" id="tag-lang-portuguese">
+                                <label class="form-check-label" for="tag-lang-portuguese">Lang:Portuguese</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:German" id="tag-lang-german">
+                                <label class="form-check-label" for="tag-lang-german">Lang:German</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:Polish" id="tag-lang-polish">
+                                <label class="form-check-label" for="tag-lang-polish">Lang:Polish</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Lang:Arabic" id="tag-lang-arabic">
+                                <label class="form-check-label" for="tag-lang-arabic">Lang:Arabic</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold text-primary">Other</h6>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Vanilla" id="tag-vanilla">
+                                <label class="form-check-label" for="tag-vanilla">Vanilla</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input tag-checkbox" type="checkbox" value="Moderated" id="tag-moderated">
+                                <label class="form-check-label" for="tag-moderated">Moderated</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="applyTags()">Apply Tags</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentConfig = {};
+        let selectedTags = [];
+        let appSettings = {
+            theme: 'dark',
+            customMaps: [],
+            customTags: [],
+            autoSave: true,
+            backupRetention: 30
+        };
 
         // Load configuration on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadCurrentConfig();
             loadBackups();
+            loadAppSettings();
         });
+
+        function loadAppSettings() {
+            const saved = localStorage.getItem('beammpConfiguratorSettings');
+            if (saved) {
+                appSettings = { ...appSettings, ...JSON.parse(saved) };
+            }
+            
+            // Apply settings to UI
+            document.getElementById('themeSelect').value = appSettings.theme;
+            document.getElementById('autoSave').checked = appSettings.autoSave;
+            document.getElementById('backupRetention').value = appSettings.backupRetention;
+            document.getElementById('customMaps').value = appSettings.customMaps.join('\n');
+            document.getElementById('customTags').value = appSettings.customTags.join('\n');
+            
+            // Apply theme
+            applyTheme(appSettings.theme);
+        }
+
+        function saveAppSettings() {
+            localStorage.setItem('beammpConfiguratorSettings', JSON.stringify(appSettings));
+        }
+
+        function changeTheme() {
+            const theme = document.getElementById('themeSelect').value;
+            appSettings.theme = theme;
+            applyTheme(theme);
+            saveAppSettings();
+        }
+
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            
+            switch(theme) {
+                case 'light':
+                    root.style.setProperty('--bg-primary', '#ffffff');
+                    root.style.setProperty('--bg-secondary', '#fafafa');
+                    root.style.setProperty('--bg-card', '#ffffff');
+                    root.style.setProperty('--bg-container', 'rgba(248, 248, 248, 0.95)');
+                    root.style.setProperty('--text-primary', '#212529');
+                    root.style.setProperty('--text-secondary', '#8a8a8a');
+                    root.style.setProperty('--accent-color', '#ff6b35');
+                    root.style.setProperty('--border-color', '#e9ecef');
+                    break;
+                case 'dark':
+                    root.style.setProperty('--bg-primary', '#1a1a1a');
+                    root.style.setProperty('--bg-secondary', '#2d2d2d');
+                    root.style.setProperty('--bg-card', '#2a2a2a');
+                    root.style.setProperty('--bg-container', 'rgba(45, 45, 45, 0.95)');
+                    root.style.setProperty('--text-primary', '#ffffff');
+                    root.style.setProperty('--text-secondary', '#888888');
+                    root.style.setProperty('--accent-color', '#ff6b35');
+                    root.style.setProperty('--border-color', '#404040');
+                    break;
+            }
+        }
+
+        function saveCustomMaps() {
+            const mapsText = document.getElementById('customMaps').value;
+            appSettings.customMaps = mapsText.split('\n').filter(line => line.trim() !== '');
+            saveAppSettings();
+            updateMapDropdown();
+            showAlert('Custom maps saved successfully!', 'success');
+        }
+
+        function saveCustomTags() {
+            const tagsText = document.getElementById('customTags').value;
+            appSettings.customTags = tagsText.split('\n').filter(line => line.trim() !== '');
+            saveAppSettings();
+            updateTagModal();
+            showAlert('Custom tags saved successfully!', 'success');
+        }
+
+        function updateMapDropdown() {
+            const mapSelect = document.getElementById('Map');
+            const currentValue = mapSelect.value;
+            
+            // Clear existing options
+            mapSelect.innerHTML = '';
+            
+            // Add default maps
+            const defaultMaps = [
+                { name: 'Gridmap v2', path: '/levels/gridmap_v2/info.json' },
+                { name: 'Johnson Valley', path: '/levels/johnson_valley/info.json' },
+                { name: 'Automation Test Track', path: '/levels/automation_test_track/info.json' },
+                { name: 'East Coast USA', path: '/levels/east_coast_usa/info.json' },
+                { name: 'Hirochi Raceway', path: '/levels/hirochi_raceway/info.json' },
+                { name: 'Italy', path: '/levels/italy/info.json' },
+                { name: 'Jungle Rock Island', path: '/levels/jungle_rock_island/info.json' },
+                { name: 'Industrial', path: '/levels/industrial/info.json' },
+                { name: 'Small Island', path: '/levels/small_island/info.json' },
+                { name: 'Small Grid', path: '/levels/smallgrid/info.json' },
+                { name: 'Utah', path: '/levels/utah/info.json' },
+                { name: 'West Coast USA', path: '/levels/west_coast_usa/info.json' },
+                { name: 'Driver Training', path: '/levels/driver_training/info.json' },
+                { name: 'Derby', path: '/levels/derby/info.json' }
+            ];
+            
+            // Add default maps
+            defaultMaps.forEach(map => {
+                const option = document.createElement('option');
+                option.value = map.path;
+                option.textContent = map.name;
+                mapSelect.appendChild(option);
+            });
+            
+            // Add custom maps
+            appSettings.customMaps.forEach(mapLine => {
+                const parts = mapLine.split('|');
+                if (parts.length === 2) {
+                    const option = document.createElement('option');
+                    option.value = parts[1].trim();
+                    option.textContent = parts[0].trim();
+                    mapSelect.appendChild(option);
+                }
+            });
+            
+            // Restore current value if it still exists
+            if (currentValue) {
+                mapSelect.value = currentValue;
+            }
+        }
+
+        function updateTagModal() {
+            // This would update the tag modal with custom tags
+            // For now, we'll just show a message
+            showAlert('Custom tags will be available in the tag selection modal', 'info');
+        }
+
+        function resetAppSettings() {
+            if (confirm('Are you sure you want to reset all app settings? This cannot be undone.')) {
+                appSettings = {
+                    theme: 'dark',
+                    customMaps: [],
+                    customTags: [],
+                    autoSave: true,
+                    backupRetention: 30
+                };
+                localStorage.removeItem('beammpConfiguratorSettings');
+                loadAppSettings();
+                showAlert('App settings reset to defaults', 'success');
+            }
+        }
 
         async function loadCurrentConfig() {
             try {
@@ -338,7 +986,7 @@
 
         function populateForm(config) {
             // Clear all form fields first
-            document.querySelectorAll('input[data-section]').forEach(input => {
+            document.querySelectorAll('input[data-section], select[data-section]').forEach(input => {
                 const section = input.dataset.section;
                 const field = input.id;
                 
@@ -350,6 +998,44 @@
                     }
                 }
             });
+
+            // Handle tags specifically
+            if (config.General && config.General.Tags) {
+                selectedTags = config.General.Tags.split(',').map(tag => tag.trim());
+                updateTagsDisplay();
+                updateTagCheckboxes();
+            }
+        }
+
+        function updateTagsDisplay() {
+            document.getElementById('Tags').value = selectedTags.join(', ');
+        }
+
+        function updateTagCheckboxes() {
+            // Clear all checkboxes first
+            document.querySelectorAll('.tag-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            // Check the ones that are selected
+            selectedTags.forEach(tag => {
+                const checkbox = document.querySelector(`.tag-checkbox[value="${tag}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+
+        function applyTags() {
+            selectedTags = [];
+            document.querySelectorAll('.tag-checkbox:checked').forEach(checkbox => {
+                selectedTags.push(checkbox.value);
+            });
+            updateTagsDisplay();
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('tagsModal'));
+            modal.hide();
         }
 
         async function saveConfig() {
@@ -362,7 +1048,7 @@
 
                 // Collect form data
                 const config = {};
-                document.querySelectorAll('input[data-section]').forEach(input => {
+                document.querySelectorAll('input[data-section], select[data-section]').forEach(input => {
                     const section = input.dataset.section;
                     const field = input.id;
                     
@@ -376,6 +1062,9 @@
                         config[section][field] = input.value;
                     }
                 });
+
+                // Handle tags specifically
+                config.General.Tags = selectedTags.join(', ');
 
                 const response = await fetch('/api/config', {
                     method: 'POST',
