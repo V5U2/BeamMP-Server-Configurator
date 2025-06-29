@@ -18,12 +18,12 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Set working directory
 WORKDIR /app
 
+# Copy config files first
+COPY config/ /config/
+
 # Copy application code and templates
 COPY app/ /app/
 COPY app/templates /app/templates
-
-# Copy config files
-COPY config/ /config/
 
 # Create directories for server data and backups
 RUN mkdir -p /server /backup
