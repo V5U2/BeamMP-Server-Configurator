@@ -19,7 +19,8 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 WORKDIR /app
 
 # Copy config files first
-COPY config/ /config/
+COPY config/app_config.json /config/
+COPY config/user_config.json /config/
 
 # Copy application code and templates
 COPY app/ /app/
