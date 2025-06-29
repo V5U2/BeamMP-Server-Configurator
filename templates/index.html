@@ -38,7 +38,7 @@
             border-radius: 15px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             margin-bottom: 1.5rem;
-            overflow: hidden;
+            overflow: visible !important;
             border: 1px solid var(--border-color);
         }
         .section-header {
@@ -47,6 +47,7 @@
             padding: 1rem 1.5rem;
             font-weight: 600;
             font-size: 1.1rem;
+            border-radius: 15px 15px 0 0;
         }
         .form-control, .form-select {
             border-radius: 10px;
@@ -282,7 +283,7 @@
             -webkit-appearance: none;
             outline: none;
             position: relative;
-            width: 7rem;
+            width: 10rem;
             max-width: 100%;
         }
         .form-switch.tall-toggle .form-check-input:checked {
@@ -293,6 +294,9 @@
             border-color: var(--accent-color);
             box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
             background-color: var(--bg-card);
+        }
+        .tab-pane {
+            overflow: visible !important;
         }
     </style>
 </head>
@@ -416,7 +420,7 @@
                         <!-- Advanced Settings Tab -->
                         <div class="tab-pane fade" id="misc" role="tabpanel">
                             <div class="section-card mb-4">
-                                <div class="section-header"><i class="fas fa-network-wired me-2"></i>Networking</div>
+                                <div class="section-header"><i class="fas fa-network-wired me-2"></i>Networking & Files</div>
                                 <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -485,8 +489,8 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="row mt-3">
-                                        <div class="col-md-4">
+                                    <div class="row">
+                                        <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label" for="SendErrorsShowMessage">Show Error Messages</label>
                                                 <div class="form-switch tall-toggle">
@@ -495,7 +499,7 @@
                                                 <div class="field-description">Show error messages on startup</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label" for="SendErrors">Send Errors</label>
                                                 <div class="form-switch tall-toggle">
@@ -504,7 +508,9 @@
                                                 <div class="field-description">Send error reports to BeamMP developers</div>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
                                                 <div class="form-switch tall-toggle">
@@ -512,6 +518,9 @@
                                                 </div>
                                                 <div class="field-description">Hide periodic update notifications</div>
                                             </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <!-- Empty column for consistent spacing -->
                                         </div>
                                     </div>
                                 </div>
@@ -542,29 +551,23 @@
                                     <i class="fas fa-server me-2"></i>Server Management
                                 </div>
                                 <div class="p-4">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="field-group">
-                                                <label class="field-label">Server Status</label>
-                                                <div class="d-flex align-items-center">
-                                                    <span id="serverStatus" class="badge bg-secondary me-2">Unknown</span>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">
-                                                        <i class="fas fa-sync-alt me-1"></i>Refresh
-                                                    </button>
-                                                </div>
-                                                <div class="field-description">Current status of the BeamMP server container</div>
-                                            </div>
+                                    <!-- Server Status and Actions -->
+                                    <div class="row align-items-center mb-3">
+                                        <div class="col-md-6 d-flex align-items-center">
+                                            <span id="serverStatus" class="btn btn-warning btn-sm me-2" style="pointer-events: none; min-width: 140px; text-align: center; font-weight: 600;">Server Status</span>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">
+                                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                                            </button>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="field-group">
-                                                <label class="field-label">Server Actions</label>
-                                                <button type="button" class="btn btn-warning" onclick="restartServer()" id="restartBtn">
-                                                    <i class="fas fa-redo me-2"></i>Restart Server
-                                                </button>
-                                                <div class="field-description">Restart the BeamMP server container</div>
-                                            </div>
+                                        <div class="col-md-6 text-end">
+                                            <button id="restartBtn" type="button" class="btn btn-warning" onclick="restartServer()">
+                                                <i class="fas fa-redo me-2"></i>Restart Server
+                                            </button>
+                                            <div class="form-text text-end">Restart the BeamMP server container</div>
                                         </div>
                                     </div>
+
+                                    <!-- Server Information -->
                                     <div class="row mt-3">
                                         <div class="col-12">
                                             <div id="serverInfo" class="alert alert-info" style="display: none;">
@@ -575,22 +578,28 @@
                                     </div>
                                     <hr>
                                     <div class="row mt-3">
-                                        <div class="col-md-6">
+                                        <div class="col-md-12">
                                             <div class="field-group">
                                                 <label class="field-label">Server Log</label>
+                                                <div class="text-end mb-2">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadServerLog()">
+                                                        <i class="fas fa-file-alt me-1"></i>Reload Server Log
+                                                    </button>
+                                                </div>
                                                 <pre id="serverLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="loadServerLog()">
-                                                    <i class="fas fa-file-alt me-1"></i>Reload Server Log
-                                                </button>
                                             </div>
                                         </div>
-                                        <div class="col-md-6">
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-12">
                                             <div class="field-group">
                                                 <label class="field-label">Container Log</label>
+                                                <div class="text-end mb-2">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadContainerLog()">
+                                                        <i class="fas fa-file-alt me-1"></i>Reload Container Log
+                                                    </button>
+                                                </div>
                                                 <pre id="containerLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="loadContainerLog()">
-                                                    <i class="fas fa-file-alt me-1"></i>Reload Container Log
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -649,12 +658,19 @@
                                                 <input type="number" class="form-control" id="backupRetention" value="10" min="1" max="100">
                                                 <div class="field-description">How many backup files to keep (oldest will be deleted)</div>
                                             </div>
+
+                                            <!-- Server Log Filename -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Server Log Filename</label>
+                                                <input type="text" class="form-control" id="serverLogFilename" placeholder="Server.log">
+                                                <div class="field-description">Name of the server log file to read (relative to config directory)</div>
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
                                             <!-- Custom Maps -->
                                             <div class="field-group mb-4">
                                                 <label class="field-label">Custom Maps</label>
-                                                <textarea class="form-control" id="customMaps" rows="4" placeholder="Add custom maps (one per line)&#10;Format: Display Name|/path/to/map/info.json&#10;&#10;Example:&#10;My Custom Map|/levels/custom_map/info.json"></textarea>
+                                                <textarea class="form-control" id="customMaps" rows="8" placeholder="Add custom maps (one per line)&#10;Format: Display Name|/path/to/map/info.json&#10;&#10;Example:&#10;My Custom Map|/levels/custom_map/info.json"></textarea>
                                                 <div class="field-description">Add custom maps to the dropdown</div>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="saveCustomMaps()">
                                                     <i class="fas fa-save me-1"></i>Save Maps
@@ -664,7 +680,7 @@
                                             <!-- Custom Tags -->
                                             <div class="field-group mb-4">
                                                 <label class="field-label">Custom Tags</label>
-                                                <textarea class="form-control" id="customTags" rows="4" placeholder="Add custom tags (one per line)&#10;Format: Category|Tag Name&#10;&#10;Example:&#10;Custom|MyTag"></textarea>
+                                                <textarea class="form-control" id="customTags" rows="8" placeholder="Add custom tags (one per line)&#10;Format: Category|Tag Name&#10;&#10;Example:&#10;Custom|MyTag"></textarea>
                                                 <div class="field-description">Add custom tags to the selection</div>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="saveCustomTags()">
                                                     <i class="fas fa-save me-1"></i>Save Tags
@@ -966,6 +982,13 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="text-center mt-5 mb-3">
+        <a href="https://github.com/V5U2/BeamMP-Server-Configurator" target="_blank" class="text-decoration-none text-muted">
+            <i class="fab fa-github me-2"></i>View on GitHub
+        </a>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentConfig = {};
@@ -975,16 +998,26 @@
             customMaps: [],
             customTags: [],
             backupRetention: 10,
-            containerName: 'beammp-server'
+            containerName: 'beammp-server',
+            serverLogFilename: 'Server.log'
         };
+        let appConfig = {};
 
-        // Load configuration on page load
+        async function loadAppConfig() {
+            try {
+                const response = await fetch('/api/app-config');
+                appConfig = await response.json();
+                updateMapDropdown();
+            } catch (error) {
+                console.error('Failed to load app config:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             loadCurrentConfig();
             loadBackups();
             loadUserConfig();
-            
-            // Check server status after a short delay
+            loadAppConfig();
             setTimeout(() => {
                 checkServerStatus();
             }, 1000);
@@ -1026,6 +1059,7 @@
             document.getElementById('themeSelect').value = userConfig.theme || 'dark';
             document.getElementById('backupRetention').value = userConfig.backupRetention || 10;
             document.getElementById('containerName').value = userConfig.containerName || 'beammp-server';
+            document.getElementById('serverLogFilename').value = userConfig.serverLogFilename || 'Server.log';
             document.getElementById('customMaps').value = (userConfig.customMaps || []).join('\n');
             document.getElementById('customTags').value = (userConfig.customTags || []).join('\n');
         }
@@ -1034,6 +1068,7 @@
             userConfig.theme = document.getElementById('themeSelect').value;
             userConfig.backupRetention = parseInt(document.getElementById('backupRetention').value) || 10;
             userConfig.containerName = document.getElementById('containerName').value || 'beammp-server';
+            userConfig.serverLogFilename = document.getElementById('serverLogFilename').value || 'Server.log';
             userConfig.customMaps = document.getElementById('customMaps').value.split('\n').filter(line => line.trim() !== '');
             userConfig.customTags = document.getElementById('customTags').value.split('\n').filter(line => line.trim() !== '');
             await fetch('/api/user-config', {
@@ -1108,6 +1143,10 @@
             
             // Add default maps
             defaultMaps.forEach(map => {
+                if (!map.name || !map.path) {
+                    console.warn('Skipping invalid map entry:', map);
+                    return;
+                }
                 const li = document.createElement('li');
                 li.innerHTML = `<a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-value="${map.path}"><span>${map.name}</span><span class='text-muted small ms-2'>${map.path}</span></a>`;
                 mapDropdownMenu.appendChild(li);
@@ -1344,7 +1383,8 @@
                     customMaps: [],
                     customTags: [],
                     backupRetention: 10,
-                    containerName: 'beammp-server'
+                    containerName: 'beammp-server',
+                    serverLogFilename: 'Server.log'
                 };
                 localStorage.removeItem('beammpConfiguratorSettings');
                 loadUserConfig();
@@ -1551,12 +1591,16 @@
                 const response = await fetch('/api/server-log');
                 const result = await response.json();
                 if (result.success) {
-                    logPre.textContent = result.log;
+                    logPre.textContent = result.log || 'Log file is empty';
                 } else {
-                    logPre.textContent = 'Error: ' + (result.message || 'Failed to load log');
+                    // Create a more user-friendly error message
+                    let errorMessage = result.message || 'Failed to load log';
+                    
+                    // Style the error message
+                    logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Log File Error</div><div style="color: #cccccc; line-height: 1.5;">${errorMessage}</div><div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;"><strong>Tips:</strong><ul style="margin: 5px 0 0 20px; padding: 0;"><li>Check the log filename in App Settings</li><li>Ensure the server has been running to generate logs</li><li>Verify file permissions if the file exists</li></ul></div>`;
                 }
             } catch (error) {
-                logPre.textContent = 'Error: ' + error.message;
+                logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Connection Error</div><div style="color: #cccccc;">Unable to connect to the server: ${error.message}</div>`;
             }
         }
 
@@ -1567,12 +1611,16 @@
                 const response = await fetch('/api/container-log');
                 const result = await response.json();
                 if (result.success) {
-                    logPre.textContent = result.log;
+                    logPre.textContent = result.log || 'Container log is empty';
                 } else {
-                    logPre.textContent = 'Error: ' + (result.message || 'Failed to load log');
+                    // Create a more user-friendly error message
+                    let errorMessage = result.message || 'Failed to load container log';
+                    
+                    // Style the error message
+                    logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Container Log Error</div><div style="color: #cccccc; line-height: 1.5;">${errorMessage}</div><div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;"><strong>Tips:</strong><ul style="margin: 5px 0 0 20px; padding: 0;"><li>Check the container name in App Settings</li><li>Ensure Docker is running and accessible</li><li>Verify the container exists and is running</li></ul></div>`;
                 }
             } catch (error) {
-                logPre.textContent = 'Error: ' + error.message;
+                logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Connection Error</div><div style="color: #cccccc;">Unable to connect to Docker: ${error.message}</div>`;
             }
         }
 

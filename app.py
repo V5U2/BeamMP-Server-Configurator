@@ -237,6 +237,20 @@ def restore_backup(filename):
     
     return redirect(url_for('list_backups'))
 
+@app.route('/backup/delete/<filename>', methods=['POST'])
+def delete_backup(filename):
+    """Delete a backup file"""
+    backup_path = os.path.join(BACKUP_DIR, filename)
+    if os.path.exists(backup_path):
+        try:
+            os.remove(backup_path)
+            flash(f'Backup {filename} deleted successfully!', 'success')
+        except Exception as e:
+            flash(f'Error deleting backup: {str(e)}', 'error')
+    else:
+        flash('Backup file not found!', 'error')
+    return redirect(url_for('list_backups'))
+
 @app.route('/health')
 def health_check():
     """Health check endpoint for container orchestration"""
@@ -345,14 +359,34 @@ def api_server_status():
 
 @app.route('/api/server-log', methods=['GET'])
 def get_server_log():
-    """API endpoint to get the server log (stub: example.log)"""
+    """API endpoint to get the server log"""
     try:
-        log_path = 'example.log'  # Stub for Server.log
-        with open(log_path, 'r', encoding='utf-8') as f:
+        user_config = load_user_config()
+        log_filename = user_config.get('serverLogFilename', 'Server.log')
+        log_path = os.path.join(CONFIG_DIR, log_filename)
+        
+        if not os.path.exists(log_path):
+            return jsonify({
+                'success': False, 
+                'log': '', 
+                'message': f'Log file "{log_filename}" not found. Please check the log filename in App Settings or ensure the server has generated logs.'
+            })
+        
+        with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
             log_content = f.read()
         return jsonify({'success': True, 'log': log_content})
+    except PermissionError:
+        return jsonify({
+            'success': False, 
+            'log': '', 
+            'message': f'Permission denied reading log file "{log_filename}". Check file permissions.'
+        })
     except Exception as e:
-        return jsonify({'success': False, 'log': '', 'message': str(e)})
+        return jsonify({
+            'success': False, 
+            'log': '', 
+            'message': f'Error reading log file: {str(e)}'
+        })
 
 @app.route('/api/container-log', methods=['GET'])
 def get_container_log():

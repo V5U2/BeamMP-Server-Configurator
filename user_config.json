@@ -1,0 +1,8 @@
+{
+  "backupRetention": 10,
+  "containerName": "beammp-server",
+  "customMaps": [],
+  "customTags": [],
+  "serverLogFilename": "Server.log",
+  "theme": "dark"
+}
