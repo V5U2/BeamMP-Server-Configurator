@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
 import toml
 import os
 from datetime import datetime
@@ -20,6 +20,7 @@ CONFIG_DIR = os.environ.get('CONFIG_DIR', '.')
 BACKUP_DIR = os.environ.get('BACKUP_DIR', 'backups')
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'ServerConfig.toml')
 APP_CONFIG_FILE = 'app_config.json'
+USER_CONFIG_FILE = 'user_config.json'
 
 # Docker configuration
 DOCKER_CLIENT = None
@@ -94,7 +95,7 @@ def load_config():
         return {}
 
 def save_config(config_data):
-    """Save the configuration to TOML file with backup"""
+    """Save the configuration to TOML file with backup and enforce backup retention by number of backups"""
     try:
         # Create backup
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -109,6 +110,23 @@ def save_config(config_data):
         # Save new config
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             toml.dump(config_data, f)
+        
+        # Enforce backup retention by number of backups
+        retention_count = 10  # Default
+        try:
+            user_config = load_user_config()
+            retention_count = int(user_config.get('backupRetention', 10))
+        except Exception:
+            pass
+        
+        backups = [f for f in os.listdir(BACKUP_DIR) if f.endswith('.toml')]
+        backups.sort(reverse=True)  # Newest first
+        if len(backups) > retention_count:
+            for old_backup in backups[retention_count:]:
+                try:
+                    os.remove(os.path.join(BACKUP_DIR, old_backup))
+                except Exception:
+                    pass
         
         return True
     except Exception as e:
@@ -325,18 +343,77 @@ def api_server_status():
             'status': 'error'
         })
 
+@app.route('/api/server-log', methods=['GET'])
+def get_server_log():
+    """API endpoint to get the server log (stub: example.log)"""
+    try:
+        log_path = 'example.log'  # Stub for Server.log
+        with open(log_path, 'r', encoding='utf-8') as f:
+            log_content = f.read()
+        return jsonify({'success': True, 'log': log_content})
+    except Exception as e:
+        return jsonify({'success': False, 'log': '', 'message': str(e)})
+
+@app.route('/api/container-log', methods=['GET'])
+def get_container_log():
+    """API endpoint to get the BeamMP container logs"""
+    if not DOCKER_CLIENT:
+        return jsonify({'success': False, 'log': '', 'message': 'Docker client not available'})
+    try:
+        user_config = load_user_config()
+        container_name = user_config.get('containerName', BEAMMP_CONTAINER_NAME)
+        containers = DOCKER_CLIENT.containers.list(all=True, filters={'name': container_name})
+        if not containers:
+            return jsonify({'success': False, 'log': '', 'message': f'Container "{container_name}" not found'})
+        container = containers[0]
+        logs = container.logs(tail=200).decode('utf-8', errors='replace')
+        return jsonify({'success': True, 'log': logs})
+    except Exception as e:
+        return jsonify({'success': False, 'log': '', 'message': str(e)})
+
+# Helper to load user config
+
+def load_user_config():
+    try:
+        with open(USER_CONFIG_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_user_config(data):
+    try:
+        with open(USER_CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving user config: {e}")
+        return False
+
+@app.route('/api/user-config', methods=['GET'])
+def get_user_config():
+    return jsonify(load_user_config())
+
+@app.route('/api/user-config', methods=['POST'])
+def update_user_config():
+    try:
+        data = request.get_json()
+        save_user_config(data)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 if __name__ == '__main__':
     # Get port from environment variable or default to 5000
     port = int(os.environ.get('PORT', 5000))
-    
     # Get host from environment variable or default to 0.0.0.0 for containers
     host = os.environ.get('HOST', '0.0.0.0')
-    
-    # Set debug mode based on environment
-    debug = os.environ.get('FLASK_ENV') == 'development'
-    
+    # Set debug mode based on environment variable
+    debug = (
+        os.environ.get('FLASK_DEBUG', '0') == '1' or
+        os.environ.get('FLASK_ENV', '').lower() == 'development'
+    )
     print(f"Starting BeamMP Configurator on {host}:{port}")
     print(f"Config file: {CONFIG_FILE}")
     print(f"Backup directory: {BACKUP_DIR}")
-    
+    print(f"Flask debug mode: {debug}")
     app.run(debug=debug, host=host, port=port) 

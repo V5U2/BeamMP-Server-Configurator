@@ -262,6 +262,38 @@
         #selectedMapPath {
             color: var(--text-secondary) !important;
         }
+        .form-switch.tall-toggle {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+            padding-left: 0rem;
+        }
+        .form-switch.tall-toggle .form-check-input {
+            height: 2.5rem;
+            min-height: 2.5rem;
+            border-radius: 10px;
+            background-color: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+            margin-left: 0;
+            margin-right: 0;
+            box-shadow: none;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            position: relative;
+            width: 7rem;
+            max-width: 100%;
+        }
+        .form-switch.tall-toggle .form-check-input:checked {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+        .form-switch.tall-toggle .form-check-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
+            background-color: var(--bg-card);
+        }
     </style>
 </head>
 <body>
@@ -290,6 +322,11 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="misc-tab" data-bs-toggle="tab" data-bs-target="#misc" type="button" role="tab">
                                 <i class="fas fa-tools me-2"></i>Advanced Settings
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="server-tab" data-bs-toggle="tab" data-bs-target="#server" type="button" role="tab">
+                                <i class="fas fa-server me-2"></i>Server Management
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
@@ -349,7 +386,7 @@
                                             <div class="field-group">
                                                 <label class="field-label">Map</label>
                                                 <div class="dropdown" id="mapDropdownContainer">
-                                                    <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="mapDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="mapDropdown" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                                                         <span id="selectedMapName">Select a map</span>
                                                         <span id="selectedMapPath" class="text-muted small ms-2"></span>
                                                     </button>
@@ -372,28 +409,14 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="field-group">
-                                                <label class="field-label">Custom Server Mods</label>
-                                                <input type="text" class="form-control" id="Mods" data-section="General" placeholder="mod1,mod2,mod3">
-                                                <div class="field-description">Comma-separated list of custom mod folder names</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <!-- Empty column for consistent spacing -->
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Advanced Settings Tab -->
                         <div class="tab-pane fade" id="misc" role="tabpanel">
-                            <div class="section-card">
-                                <div class="section-header">
-                                    <i class="fas fa-tools me-2"></i>Advanced Settings
-                                </div>
+                            <div class="section-card mb-4">
+                                <div class="section-header"><i class="fas fa-network-wired me-2"></i>Networking</div>
                                 <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
@@ -411,61 +434,98 @@
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="section-card mb-4">
+                                <div class="section-header"><i class="fas fa-shield-alt me-2"></i>Security</div>
+                                <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="field-group">
                                                 <label class="field-label">Auth Key</label>
-                                                <input type="text" class="form-control" id="AuthKey" data-section="General">
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control" id="AuthKey" data-section="General" autocomplete="off">
+                                                    <button class="btn btn-outline-secondary" type="button" id="toggleAuthKey" tabindex="-1"><i class="fas fa-eye"></i></button>
+                                                </div>
                                                 <div class="field-description">Your BeamMP authentication key from keymaster.beammp.com</div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="SendErrorsShowMessage" data-section="Misc">
-                                                <label class="form-check-label field-label" for="SendErrorsShowMessage">Show Error Messages</label>
+                                            <div class="field-group">
+                                                <label class="field-label" for="Private">Private Server</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="Private" data-section="General">
+                                                </div>
+                                                <div class="field-description">Whether the server is private</div>
                                             </div>
-                                            <div class="field-description">Show error messages on startup</div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="section-card mb-4">
+                                <div class="section-header"><i class="fas fa-bug me-2"></i>Logging & Debug</div>
+                                <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="SendErrors" data-section="Misc">
-                                                <label class="form-check-label field-label" for="SendErrors">Send Errors</label>
+                                            <div class="field-group">
+                                                <label class="field-label" for="Debug">Debug Mode</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
+                                                </div>
+                                                <div class="field-description">Enable debug logging</div>
                                             </div>
-                                            <div class="field-description">Send error reports to BeamMP developers</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="ImScaredOfUpdates" data-section="Misc">
-                                                <label class="form-check-label field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
+                                            <div class="field-group">
+                                                <label class="field-label" for="LogChat">Log Chat</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
+                                                </div>
+                                                <div class="field-description">Log chat messages to console</div>
                                             </div>
-                                            <div class="field-description">Hide periodic update notifications</div>
                                         </div>
                                     </div>
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="Private" data-section="General">
-                                                <label class="form-check-label field-label" for="Private">Private Server</label>
+                                    <div class="row mt-3">
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <label class="field-label" for="SendErrorsShowMessage">Show Error Messages</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="SendErrorsShowMessage" data-section="Misc">
+                                                </div>
+                                                <div class="field-description">Show error messages on startup</div>
                                             </div>
-                                            <div class="field-description">Whether the server is private</div>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="Debug" data-section="General">
-                                                <label class="form-check-label field-label" for="Debug">Debug Mode</label>
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <label class="field-label" for="SendErrors">Send Errors</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="SendErrors" data-section="Misc">
+                                                </div>
+                                                <div class="field-description">Send error reports to BeamMP developers</div>
                                             </div>
-                                            <div class="field-description">Enable debug logging</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="field-group">
+                                                <label class="field-label" for="ImScaredOfUpdates">Hide Update Messages</label>
+                                                <div class="form-switch tall-toggle">
+                                                    <input class="form-check-input" type="checkbox" id="ImScaredOfUpdates" data-section="Misc">
+                                                </div>
+                                                <div class="field-description">Hide periodic update notifications</div>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                            <div class="section-card mb-4">
+                                <div class="section-header"><i class="fas fa-puzzle-piece me-2"></i>Mods</div>
+                                <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="LogChat" data-section="General">
-                                                <label class="form-check-label field-label" for="LogChat">Log Chat</label>
+                                            <div class="field-group">
+                                                <label class="field-label">Custom Server Mods</label>
+                                                <input type="text" class="form-control" id="Mods" data-section="General" placeholder="mod1,mod2,mod3">
+                                                <div class="field-description">Comma-separated list of custom mod folder names</div>
                                             </div>
-                                            <div class="field-description">Log chat messages to console</div>
                                         </div>
                                         <div class="col-md-6">
                                             <!-- Empty column for consistent spacing -->
@@ -473,8 +533,10 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Server Management Section -->
+                        <!-- Server Management Tab -->
+                        <div class="tab-pane fade" id="server" role="tabpanel">
                             <div class="section-card">
                                 <div class="section-header">
                                     <i class="fas fa-server me-2"></i>Server Management
@@ -508,6 +570,27 @@
                                             <div id="serverInfo" class="alert alert-info" style="display: none;">
                                                 <h6 class="alert-heading">Server Information</h6>
                                                 <div id="serverInfoContent"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Server Log</label>
+                                                <pre id="serverLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="loadServerLog()">
+                                                    <i class="fas fa-file-alt me-1"></i>Reload Server Log
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="field-group">
+                                                <label class="field-label">Container Log</label>
+                                                <pre id="containerLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="loadContainerLog()">
+                                                    <i class="fas fa-file-alt me-1"></i>Reload Container Log
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -553,20 +636,18 @@
                                                 <div class="field-description">Choose your preferred color theme</div>
                                             </div>
 
-                                            <!-- Auto Save -->
+                                            <!-- Container Name -->
                                             <div class="field-group mb-4">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="autoSave" checked>
-                                                    <label class="form-check-label field-label" for="autoSave">Auto Save</label>
-                                                </div>
-                                                <div class="field-description">Automatically save changes</div>
+                                                <label class="field-label">Server Container Name</label>
+                                                <input type="text" class="form-control" id="containerName" placeholder="beammp-server">
+                                                <div class="field-description">Name of the Docker container running your BeamMP server</div>
                                             </div>
 
                                             <!-- Backup Retention -->
                                             <div class="field-group mb-4">
-                                                <label class="field-label">Backup Retention (days)</label>
-                                                <input type="number" class="form-control" id="backupRetention" value="30" min="1" max="365">
-                                                <div class="field-description">How long to keep backup files</div>
+                                                <label class="field-label">Number of Backups</label>
+                                                <input type="number" class="form-control" id="backupRetention" value="10" min="1" max="100">
+                                                <div class="field-description">How many backup files to keep (oldest will be deleted)</div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
@@ -889,98 +970,84 @@
     <script>
         let currentConfig = {};
         let selectedTags = [];
-        let appSettings = {
+        let userConfig = {
             theme: 'dark',
             customMaps: [],
             customTags: [],
-            autoSave: true,
-            backupRetention: 30
-        };
-        let appConfig = {
-            defaultMaps: [],
-            defaultTags: {},
-            appDefaults: {},
-            serverDefaults: {}
+            backupRetention: 10,
+            containerName: 'beammp-server'
         };
 
         // Load configuration on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadCurrentConfig();
             loadBackups();
-            loadAppSettings();
-            loadAppConfig();
+            loadUserConfig();
             
             // Check server status after a short delay
             setTimeout(() => {
                 checkServerStatus();
             }, 1000);
+
+            const authKeyInput = document.getElementById('AuthKey');
+            const toggleAuthKey = document.getElementById('toggleAuthKey');
+            let authKeyVisible = false;
+
+            if (authKeyInput && toggleAuthKey) {
+                toggleAuthKey.addEventListener('click', function() {
+                    authKeyVisible = !authKeyVisible;
+                    if (authKeyVisible) {
+                        authKeyInput.type = 'text';
+                        toggleAuthKey.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                        // Show full value
+                        if (currentConfig.General && currentConfig.General.AuthKey) {
+                            authKeyInput.value = currentConfig.General.AuthKey;
+                        }
+                    } else {
+                        authKeyInput.type = 'password';
+                        toggleAuthKey.innerHTML = '<i class="fas fa-eye"></i>';
+                        // Show masked value
+                        if (currentConfig.General && currentConfig.General.AuthKey) {
+                            authKeyInput.value = maskAuthKey(currentConfig.General.AuthKey);
+                        }
+                    }
+                });
+            }
         });
 
-        async function loadAppConfig() {
+        async function loadUserConfig() {
             try {
-                const response = await fetch('/api/app-config');
-                appConfig = await response.json();
-                updateMapDropdown();
-                updateTagModal();
+                const response = await fetch('/api/user-config');
+                userConfig = await response.json();
             } catch (error) {
-                console.error('Error loading app config:', error);
-                // Fallback to hardcoded defaults if API fails
-                loadFallbackDefaults();
+                // Use defaults if error
             }
-        }
-
-        function loadFallbackDefaults() {
-            // Fallback defaults if API fails
-            appConfig = {
-                defaultMaps: [
-                    { name: 'Gridmap v2', path: '/levels/gridmap_v2/info.json' },
-                    { name: 'Johnson Valley', path: '/levels/johnson_valley/info.json' },
-                    { name: 'Automation Test Track', path: '/levels/automation_test_track/info.json' },
-                    { name: 'East Coast USA', path: '/levels/east_coast_usa/info.json' },
-                    { name: 'Hirochi Raceway', path: '/levels/hirochi_raceway/info.json' },
-                    { name: 'Italy', path: '/levels/italy/info.json' },
-                    { name: 'Jungle Rock Island', path: '/levels/jungle_rock_island/info.json' },
-                    { name: 'Industrial', path: '/levels/industrial/info.json' },
-                    { name: 'Small Island', path: '/levels/small_island/info.json' },
-                    { name: 'Small Grid', path: '/levels/smallgrid/info.json' },
-                    { name: 'Utah', path: '/levels/utah/info.json' },
-                    { name: 'West Coast USA', path: '/levels/west_coast_usa/info.json' },
-                    { name: 'Driver Training', path: '/levels/driver_training/info.json' },
-                    { name: 'Derby', path: '/levels/derby/info.json' }
-                ],
-                defaultTags: {},
-                appDefaults: {},
-                serverDefaults: {}
-            };
-            updateMapDropdown();
-        }
-
-        function loadAppSettings() {
-            const saved = localStorage.getItem('beammpConfiguratorSettings');
-            if (saved) {
-                appSettings = { ...appSettings, ...JSON.parse(saved) };
-            }
-            
             // Apply settings to UI
-            document.getElementById('themeSelect').value = appSettings.theme;
-            document.getElementById('autoSave').checked = appSettings.autoSave;
-            document.getElementById('backupRetention').value = appSettings.backupRetention;
-            document.getElementById('customMaps').value = appSettings.customMaps.join('\n');
-            document.getElementById('customTags').value = appSettings.customTags.join('\n');
-            
-            // Apply theme
-            applyTheme(appSettings.theme);
+            document.getElementById('themeSelect').value = userConfig.theme || 'dark';
+            document.getElementById('backupRetention').value = userConfig.backupRetention || 10;
+            document.getElementById('containerName').value = userConfig.containerName || 'beammp-server';
+            document.getElementById('customMaps').value = (userConfig.customMaps || []).join('\n');
+            document.getElementById('customTags').value = (userConfig.customTags || []).join('\n');
         }
 
-        function saveAppSettings() {
-            localStorage.setItem('beammpConfiguratorSettings', JSON.stringify(appSettings));
+        async function saveUserConfig() {
+            userConfig.theme = document.getElementById('themeSelect').value;
+            userConfig.backupRetention = parseInt(document.getElementById('backupRetention').value) || 10;
+            userConfig.containerName = document.getElementById('containerName').value || 'beammp-server';
+            userConfig.customMaps = document.getElementById('customMaps').value.split('\n').filter(line => line.trim() !== '');
+            userConfig.customTags = document.getElementById('customTags').value.split('\n').filter(line => line.trim() !== '');
+            await fetch('/api/user-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userConfig)
+            });
         }
 
         function changeTheme() {
             const theme = document.getElementById('themeSelect').value;
-            appSettings.theme = theme;
+            userConfig.theme = theme;
             applyTheme(theme);
-            saveAppSettings();
+            saveUserConfig();
         }
 
         function applyTheme(theme) {
@@ -1012,16 +1079,16 @@
 
         function saveCustomMaps() {
             const mapsText = document.getElementById('customMaps').value;
-            appSettings.customMaps = mapsText.split('\n').filter(line => line.trim() !== '');
-            saveAppSettings();
+            userConfig.customMaps = mapsText.split('\n').filter(line => line.trim() !== '');
+            saveUserConfig();
             updateMapDropdown();
             showAlert('Custom maps saved successfully!', 'success');
         }
 
         function saveCustomTags() {
             const tagsText = document.getElementById('customTags').value;
-            appSettings.customTags = tagsText.split('\n').filter(line => line.trim() !== '');
-            saveAppSettings();
+            userConfig.customTags = tagsText.split('\n').filter(line => line.trim() !== '');
+            saveUserConfig();
             updateTagModal();
             showAlert('Custom tags saved successfully!', 'success');
         }
@@ -1047,7 +1114,7 @@
             });
             
             // Add custom maps
-            appSettings.customMaps.forEach(mapLine => {
+            userConfig.customMaps.forEach(mapLine => {
                 const parts = mapLine.split('|');
                 if (parts.length === 2) {
                     const name = parts[0].trim();
@@ -1185,6 +1252,16 @@
                 // Handle tags specifically
                 config.General.Tags = selectedTags.join(', ');
 
+                // Special handling for AuthKey
+                const authKeyInput = document.getElementById('AuthKey');
+                if (authKeyInput) {
+                    if (authKeyInput.type === 'password' && currentConfig.General && currentConfig.General.AuthKey) {
+                        config.General.AuthKey = currentConfig.General.AuthKey;
+                    } else {
+                        config.General.AuthKey = authKeyInput.value;
+                    }
+                }
+
                 const response = await fetch('/api/config', {
                     method: 'POST',
                     headers: {
@@ -1262,15 +1339,15 @@
 
         function resetAppSettings() {
             if (confirm('Are you sure you want to reset all app settings? This cannot be undone.')) {
-                appSettings = {
+                userConfig = {
                     theme: 'dark',
                     customMaps: [],
                     customTags: [],
-                    autoSave: true,
-                    backupRetention: 30
+                    backupRetention: 10,
+                    containerName: 'beammp-server'
                 };
                 localStorage.removeItem('beammpConfiguratorSettings');
-                loadAppSettings();
+                loadUserConfig();
                 showAlert('App settings reset to defaults', 'success');
             }
         }
@@ -1305,6 +1382,14 @@
                 selectedTags = config.General.Tags.split(',').map(tag => tag.trim());
                 updateTagsDisplay();
                 updateTagCheckboxes();
+            }
+
+            // Special handling for AuthKey masking
+            const authKeyInput = document.getElementById('AuthKey');
+            if (authKeyInput && config.General && config.General.AuthKey) {
+                authKeyInput.type = 'password';
+                authKeyInput.value = maskAuthKey(config.General.AuthKey);
+                authKeyInput.dataset.realValue = config.General.AuthKey;
             }
         }
 
@@ -1452,6 +1537,50 @@
                 restartBtn.disabled = false;
             }
         }
+
+        // Mask Auth Key except for first and last 3 characters
+        function maskAuthKey(key) {
+            if (!key || key.length <= 6) return '*'.repeat(key.length);
+            return key.substring(0, 3) + '*'.repeat(key.length - 6) + key.substring(key.length - 3);
+        }
+
+        async function loadServerLog() {
+            const logPre = document.getElementById('serverLog');
+            logPre.textContent = 'Loading...';
+            try {
+                const response = await fetch('/api/server-log');
+                const result = await response.json();
+                if (result.success) {
+                    logPre.textContent = result.log;
+                } else {
+                    logPre.textContent = 'Error: ' + (result.message || 'Failed to load log');
+                }
+            } catch (error) {
+                logPre.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function loadContainerLog() {
+            const logPre = document.getElementById('containerLog');
+            logPre.textContent = 'Loading...';
+            try {
+                const response = await fetch('/api/container-log');
+                const result = await response.json();
+                if (result.success) {
+                    logPre.textContent = result.log;
+                } else {
+                    logPre.textContent = 'Error: ' + (result.message || 'Failed to load log');
+                }
+            } catch (error) {
+                logPre.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        // Auto-load logs when Server Management tab is shown
+        document.getElementById('server-tab').addEventListener('click', function() {
+            loadServerLog();
+            loadContainerLog();
+        });
     </script>
 </body>
 </html> 
