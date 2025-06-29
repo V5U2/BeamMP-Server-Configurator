@@ -18,6 +18,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'beammp_config_secret_key_2024')
 # Configuration from environment variables
 CONFIG_DIR = os.environ.get('CONFIG_DIR', '.')
 BACKUP_DIR = os.environ.get('BACKUP_DIR', 'backups')
+LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
 CONFIG_FILE = os.path.join(CONFIG_DIR, 'ServerConfig.toml')
 APP_CONFIG_FILE = 'app_config.json'
 USER_CONFIG_FILE = 'user_config.json'
@@ -363,13 +364,13 @@ def get_server_log():
     try:
         user_config = load_user_config()
         log_filename = user_config.get('serverLogFilename', 'Server.log')
-        log_path = os.path.join(CONFIG_DIR, log_filename)
+        log_path = os.path.join(LOG_DIR, log_filename)
         
         if not os.path.exists(log_path):
             return jsonify({
                 'success': False, 
                 'log': '', 
-                'message': f'Log file "{log_filename}" not found. Please check the log filename in App Settings or ensure the server has generated logs.'
+                'message': f'Log file "{log_filename}" not found in logs directory. Please check the log filename in App Settings or ensure the server has generated logs.'
             })
         
         with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
