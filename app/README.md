@@ -8,24 +8,30 @@ A modern web-based configuration tool for BeamMP servers with a beautiful UI, au
 
 You can use the prebuilt image from GitHub Container Registry (GHCR):
 
-1. **Pull the image:**
-   ```sh
-   docker pull ghcr.io/v5u2/beammp-server-configurator:latest
-   ```
+### Linux/macOS
+```sh
+docker run -d -p 5000:5000 \
+  -v ./config:/config \
+  -v ./backup:/backup \
+  -v ./server:/server \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --name beammp-configurator \
+  ghcr.io/v5u2/beammp-server-configurator:latest
+```
 
-2. **Run the container:**
-   ```sh
-   docker run -d -p 5000:5000 \
-     -v ./configs:/app/configs \
-     -v ./backups:/app/backups \
-     -v ./logs:/app/logs \
-     -v /var/run/docker.sock:/var/run/docker.sock \
-     --name beammp-configurator \
-     ghcr.io/v5u2/beammp-server-configurator:latest
-   ```
-   - This will start the configurator on port 5000.
-   - Config, backup, and log data will be stored in `./configs`, `./backups`, and `./logs` on your host.
-   - The Docker socket mount is required for server container management features.
+### PowerShell/Windows
+```powershell
+docker run -d -p 5000:5000 `
+  -v ./config:/config `
+  -v ./backup:/backup `
+  -v ./server:/server `
+  -v //var/run/docker.sock:/var/run/docker.sock `
+  --name beammp-configurator `
+  ghcr.io/v5u2/beammp-server-configurator:latest
+```
+- This will start the configurator on port 5000.
+- App config, server data, and backups will be stored in `./config`, `./server`, and `./backup` on your host.
+- The Docker socket mount is required for server container management features.
 
 3. **Access the web UI:**
    - Open your browser to [http://localhost:5000](http://localhost:5000)
@@ -44,12 +50,25 @@ You can use the prebuilt image from GitHub Container Registry (GHCR):
 
 ## Using Docker Compose
 
-You can also use the included `docker-compose.yml` for easier setup and management.  
-This will build the image, set up volumes for configs, backups, and logs, and expose the web UI on port 5000.
+You can also use the included `docker-compose.yml` for easier setup and management:
 
 ```sh
 docker compose up -d
 ```
+
+This will mount the following directories:
+- `./config` → `/config` (app config)
+- `./backup` → `/backup` (server config backups)
+- `./server` → `/server` (server config/log)
+
+---
+
+## Project Structure
+
+- `/app` — Application code and templates
+- `/config` — App config files (`app_config.json`, `user_config.json`)
+- `/server` — Server data (`ServerConfig.toml`, `Server.log`)
+- `/backup` — Server config backups (`ServerConfig_backup_*.toml`)
 
 ---
 

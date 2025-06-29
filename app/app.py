@@ -3,6 +3,8 @@ import toml
 import os
 from datetime import datetime
 import json
+import shutil
+import argparse
 
 # Try to import docker, but make it optional
 try:
@@ -12,16 +14,26 @@ except ImportError:
     DOCKER_AVAILABLE = False
     print("Warning: Docker module not available. Server management features will be disabled.")
 
-app = Flask(__name__)
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
 app.secret_key = os.environ.get('SECRET_KEY', 'beammp_config_secret_key_2024')
 
-# Configuration from environment variables
-CONFIG_DIR = os.environ.get('CONFIG_DIR', '.')
-BACKUP_DIR = os.environ.get('BACKUP_DIR', 'backups')
-LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
-CONFIG_FILE = os.path.join(CONFIG_DIR, 'ServerConfig.toml')
-APP_CONFIG_FILE = 'app_config.json'
-USER_CONFIG_FILE = 'user_config.json'
+# Parse command-line arguments for development overrides
+parser = argparse.ArgumentParser(description="BeamMP Server Configurator")
+parser.add_argument('--config-dir', type=str, help='Path to server config directory')
+parser.add_argument('--backup-dir', type=str, help='Path to server backup directory')
+parser.add_argument('--server-dir', type=str, help='Path to server data directory')
+args, unknown = parser.parse_known_args()
+
+# Configuration from environment variables or flags
+CONFIG_DIR = args.config_dir or os.environ.get('CONFIG_DIR', '/config')
+BACKUP_DIR = args.backup_dir or os.environ.get('BACKUP_DIR', '/backup')
+SERVER_DIR = args.server_dir or os.environ.get('SERVER_DIR', '/server')
+LOG_DIR = SERVER_DIR
+CONFIG_FILE = os.path.join(SERVER_DIR, 'ServerConfig.toml')
+APP_CONFIG_FILE = os.path.join(CONFIG_DIR, 'app_config.json')
+USER_CONFIG_FILE = os.path.join(CONFIG_DIR, 'user_config.json')
 
 # Docker configuration
 DOCKER_CLIENT = None
@@ -44,6 +56,14 @@ else:
 for directory in [BACKUP_DIR, CONFIG_DIR]:
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+# Get the directory where this script is located
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_APP_CONFIG_FILE = os.path.join(APP_ROOT, 'default_app_config.json')
+if not os.path.exists(APP_CONFIG_FILE):
+    os.makedirs(os.path.dirname(APP_CONFIG_FILE), exist_ok=True)
+    shutil.copy(DEFAULT_APP_CONFIG_FILE, APP_CONFIG_FILE)
+    print(f"Created default app config at {APP_CONFIG_FILE}")
 
 def load_app_config():
     """Load the application configuration from JSON file"""

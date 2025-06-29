@@ -7,17 +7,14 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Mount the directory containing your ServerConfig.toml
-      - ./configs:/app/configs:ro
-      # Mount backups directory for persistence
-      - ./backups:/app/backups
-      # Mount logs directory
-      - ./logs:/app/logs
+      - ./config:/config
+      - ./backup:/backup
+      - ./server:/server
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - FLASK_ENV=production
-      - CONFIG_DIR=/app/configs
-      - BACKUP_DIR=/app/backups
+      - CONFIG_DIR=/server
+      - BACKUP_DIR=/backup
       - BEAMMP_CONTAINER_NAME=beammp-server
     restart: unless-stopped
     healthcheck:

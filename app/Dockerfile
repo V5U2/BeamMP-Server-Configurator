@@ -18,28 +18,15 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Set working directory
 WORKDIR /app
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    FLASK_APP=app.py \
-    FLASK_ENV=production
+# Copy application code and templates
+COPY app/ /app/
+COPY app/templates /app/templates
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy config files
+COPY config/ /config/
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
-
-# Create directories for backups and configs
-RUN mkdir -p /app/backups /app/configs
+# Create directories for server data and backups
+RUN mkdir -p /server /backup
 
 # Expose port
 EXPOSE 5000
