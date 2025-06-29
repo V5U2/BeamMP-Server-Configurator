@@ -30,7 +30,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          dockerfile: ./app/Dockerfile
+          dockerfile: app/Dockerfile
           push: true
           tags: ghcr.io/v5u2/beammp-server-configurator:latest
           # Optionally add more tags, e.g. for versioning 
