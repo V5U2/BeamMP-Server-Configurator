@@ -18,6 +18,12 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Set working directory
 WORKDIR /app
 
+# Copy requirements first for better caching
+COPY app/requirements.txt /app/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
 # Copy application code and templates
 COPY app/ /app/
 COPY app/templates /app/templates
