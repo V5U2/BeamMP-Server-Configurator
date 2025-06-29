@@ -31,5 +31,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/beammp-server-configurator:latest
+          tags: ghcr.io/v5u2/beammp-server-configurator:latest
           # Optionally add more tags, e.g. for versioning 
