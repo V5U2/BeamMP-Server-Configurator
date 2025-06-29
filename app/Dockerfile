@@ -18,19 +18,12 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
 # Set working directory
 WORKDIR /app
 
-# Copy config files first
-COPY config/app_config.json /app/
-COPY config/user_config.json /app/
-
 # Copy application code and templates
 COPY app/ /app/
 COPY app/templates /app/templates
 
-# Move config files to their final location
-RUN mkdir -p /config && mv /app/app_config.json /config/ && mv /app/user_config.json /config/
-
 # Create directories for server data and backups
-RUN mkdir -p /server /backup
+RUN mkdir -p /server /backup /config
 
 # Expose port
 EXPOSE 5000
