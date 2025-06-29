@@ -29,7 +29,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./app
+          context: .
           dockerfile: ./app/Dockerfile
           push: true
           tags: ghcr.io/v5u2/beammp-server-configurator:latest
