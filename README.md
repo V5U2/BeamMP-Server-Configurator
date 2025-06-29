@@ -56,10 +56,12 @@ You can also use the included `docker-compose.yml` for easier setup and manageme
 docker compose up -d
 ```
 
-This will mount the following directories:
-- `./config` → `/config` (app config)
-- `./backup` → `/backup` (server config backups)
-- `./server` → `/server` (server config/log)
+This will create bind mounts for the following directories:
+- `./config` → `/config` (app config) - bind mount
+- `./backup` → `/backup` (server config backups) - bind mount  
+- `./server` → `/server` (server config/log) - bind mount
+
+The bind mounts ensure that your local files are directly accessible to the container and persist between container restarts.
 
 ---
 
