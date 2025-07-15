@@ -1,0 +1,74 @@
+services:
+  beammp-configurator:
+    build: .
+    container_name: beammp-configurator
+    ports:
+      - "5000:5000"
+    volumes:
+      - ${CONFIG_DATA}:/config
+      - ${BACKUP_DATA}:/backup
+      - ${SERVER_DATA}:/server
+    environment:
+      - FLASK_ENV=production
+      - CONFIG_DIR=/config
+      - BACKUP_DIR=/backup
+      - SERVER_DIR=/server
+      - BEAMMP_CONTAINER_NAME=beamng-mp
+      - DOCKER_HOST=http://docker-proxy:2375  # Use the secure proxy
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - beammp-network
+
+  beamng-mp:
+    image: ich777/beamng-mp-server
+    container_name: beamng-mp
+    environment:
+      - TZ=Australia/Perth
+      - GAME_PARAMS=
+      - UID=99
+      - GID=100
+      - UMASK=0000
+    ports:
+      - "30814:30814/tcp"
+      - "30814:30814/udp"
+      - "9045:8080/tcp"
+    volumes:
+      - ${SERVER_DATA}:/beamngmp
+    restart: unless-stopped
+    networks:
+      - beammp-network
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    container_name: docker-proxy
+    environment:
+      - CONTAINERS=1   # Allow access to containers endpoints
+      - POST=1         # Allow POST (for restart)
+      - GET=1          # Allow GET (for status)
+      - LOGS=1         # Allow logs endpoint
+      - NETWORKS=0
+      - IMAGES=0
+      - AUTH=0
+      - INFO=0
+      - SYSTEM=0
+      - VOLUMES=0
+      - BUILD=0
+      - EVENTS=0
+      - PING=1         # Allow ping for healthcheck
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - beammp-network
+
+networks:
+  beammp-network:
+    driver: bridge 

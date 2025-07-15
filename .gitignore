@@ -2,3 +2,6 @@
 /backup/
 /server/
 /config/
+
+.env
+.dockerignore

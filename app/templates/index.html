@@ -298,6 +298,89 @@
         .tab-pane {
             overflow: visible !important;
         }
+
+        /* --- Server Info Box Custom Styles --- */
+        .server-info-box {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            padding: 0;
+            color: var(--text-primary);
+        }
+        .server-info-heading {
+            background: linear-gradient(45deg, var(--accent-color), #f7931e);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+            font-size: 1.15rem;
+            border-radius: 12px 12px 0 0;
+            letter-spacing: 0.5px;
+        }
+        .server-info-content {
+            padding: 1.5rem 2rem 1.2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
+        }
+        .server-info-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0.2rem;
+        }
+        .server-info-label {
+            font-weight: 600;
+            color: #90caf9;
+            margin-bottom: 0.1rem;
+            font-size: 1rem;
+        }
+        .server-info-value {
+            font-weight: 400;
+            font-size: 1.08rem;
+            word-break: break-word;
+        }
+        .server-info-id {
+            font-family: 'Fira Mono', 'Consolas', monospace;
+            font-size: 0.97rem;
+        }
+        .server-info-status {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            text-transform: capitalize;
+            font-size: 1.08rem;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #43ea7f;
+            margin-right: 0.5em;
+            display: inline-block;
+        }
+        .server-info-status.running .status-dot { background: #43ea7f; }
+        .server-info-status.stopped .status-dot { background: #e57373; }
+        .server-info-status.paused .status-dot { background: #ffd600; }
+        .server-info-status.restarting .status-dot { background: #29b6f6; }
+
+        /* Custom scrollbar for log output and main window */
+        .custom-scroll, .main-container {
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-color) var(--bg-secondary);
+        }
+        .custom-scroll::-webkit-scrollbar, .main-container::-webkit-scrollbar {
+            width: 10px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb, .main-container::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover, .main-container::-webkit-scrollbar-thumb:hover {
+            background: #ff884d;
+        }
     </style>
 </head>
 <body>
@@ -553,53 +636,49 @@
                                 <div class="p-4">
                                     <!-- Server Status and Actions -->
                                     <div class="row align-items-center mb-3">
-                                        <div class="col-md-6 d-flex align-items-center">
-                                            <span id="serverStatus" class="btn btn-warning btn-sm me-2" style="pointer-events: none; min-width: 140px; text-align: center; font-weight: 600;">Server Status</span>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="checkServerStatus()">
-                                                <i class="fas fa-sync-alt me-1"></i>Refresh
-                                            </button>
-                                        </div>
-                                        <div class="col-md-6 text-end">
-                                            <button id="restartBtn" type="button" class="btn btn-warning" onclick="restartServer()">
-                                                <i class="fas fa-redo me-2"></i>Restart Server
-                                            </button>
-                                            <div class="form-text text-end">Restart the BeamMP server container</div>
-                                        </div>
+                                        <!-- Remove the status badge and refresh button from here -->
                                     </div>
 
                                     <!-- Server Information -->
                                     <div class="row mt-3">
                                         <div class="col-12">
-                                            <div id="serverInfo" class="alert alert-info" style="display: none;">
-                                                <h6 class="alert-heading">Server Information</h6>
-                                                <div id="serverInfoContent"></div>
+                                            <div id="serverInfo" class="server-info-box" style="display: none; position: relative;">
+                                                <div class="d-flex justify-content-between align-items-center server-info-heading" style="position: relative;">
+                                                    <span><i class="fas fa-info-circle me-2"></i>Server Information</span>
+                                                    <button id="restartBtn" type="button" class="btn btn-warning btn-lg" style="min-width: 160px;" onclick="restartServer()">
+                                                        <i class="fas fa-redo me-2"></i>Restart Server
+                                                    </button>
+                                                </div>
+                                                <div id="serverInfoContent" class="server-info-content"></div>
                                             </div>
                                         </div>
                                     </div>
                                     <hr>
+                                    <!-- Server Log -->
                                     <div class="row mt-3">
                                         <div class="col-md-12">
-                                            <div class="field-group">
-                                                <label class="field-label">Server Log</label>
-                                                <div class="text-end mb-2">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadServerLog()">
-                                                        <i class="fas fa-file-alt me-1"></i>Reload Server Log
+                                            <div class="server-info-box">
+                                                <div class="d-flex justify-content-between align-items-center server-info-heading">
+                                                    <span><i class="fas fa-file-alt me-2"></i>Server Log</span>
+                                                    <button type="button" class="btn btn-info btn-lg" style="min-width: 160px;" onclick="loadServerLog()">
+                                                        <i class="fas fa-sync-alt me-2"></i>Reload Server Log
                                                     </button>
                                                 </div>
-                                                <pre id="serverLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
+                                                <pre id="serverLog" class="log-output custom-scroll p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Container Log -->
                                     <div class="row mt-3">
                                         <div class="col-md-12">
-                                            <div class="field-group">
-                                                <label class="field-label">Container Log</label>
-                                                <div class="text-end mb-2">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadContainerLog()">
-                                                        <i class="fas fa-file-alt me-1"></i>Reload Container Log
+                                            <div class="server-info-box">
+                                                <div class="d-flex justify-content-between align-items-center server-info-heading">
+                                                    <span><i class="fab fa-docker me-2"></i>Container Log</span>
+                                                    <button type="button" class="btn btn-info btn-lg" style="min-width: 160px;" onclick="loadContainerLog()">
+                                                        <i class="fas fa-sync-alt me-2"></i>Reload Container Log
                                                     </button>
                                                 </div>
-                                                <pre id="containerLog" class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
+                                                <pre id="containerLog" class="log-output custom-scroll p-3 rounded" style="max-height: 800px; overflow-y: auto;">Loading...</pre>
                                             </div>
                                         </div>
                                     </div>
@@ -643,13 +722,6 @@
                                                     <option value="light">Light Theme</option>
                                                 </select>
                                                 <div class="field-description">Choose your preferred color theme</div>
-                                            </div>
-
-                                            <!-- Container Name -->
-                                            <div class="field-group mb-4">
-                                                <label class="field-label">Server Container Name</label>
-                                                <input type="text" class="form-control" id="containerName" placeholder="beammp-server">
-                                                <div class="field-description">Name of the Docker container running your BeamMP server</div>
                                             </div>
 
                                             <!-- Backup Retention -->
@@ -998,7 +1070,6 @@
             customMaps: [],
             customTags: [],
             backupRetention: 10,
-            containerName: 'beammp-server',
             serverLogFilename: 'Server.log'
         };
         let appConfig = {};
@@ -1058,7 +1129,6 @@
             // Apply settings to UI
             document.getElementById('themeSelect').value = userConfig.theme || 'dark';
             document.getElementById('backupRetention').value = userConfig.backupRetention || 10;
-            document.getElementById('containerName').value = userConfig.containerName || 'beammp-server';
             document.getElementById('serverLogFilename').value = userConfig.serverLogFilename || 'Server.log';
             document.getElementById('customMaps').value = (userConfig.customMaps || []).join('\n');
             document.getElementById('customTags').value = (userConfig.customTags || []).join('\n');
@@ -1067,7 +1137,6 @@
         async function saveUserConfig() {
             userConfig.theme = document.getElementById('themeSelect').value;
             userConfig.backupRetention = parseInt(document.getElementById('backupRetention').value) || 10;
-            userConfig.containerName = document.getElementById('containerName').value || 'beammp-server';
             userConfig.serverLogFilename = document.getElementById('serverLogFilename').value || 'Server.log';
             userConfig.customMaps = document.getElementById('customMaps').value.split('\n').filter(line => line.trim() !== '');
             userConfig.customTags = document.getElementById('customTags').value.split('\n').filter(line => line.trim() !== '');
@@ -1383,7 +1452,6 @@
                     customMaps: [],
                     customTags: [],
                     backupRetention: 10,
-                    containerName: 'beammp-server',
                     serverLogFilename: 'Server.log'
                 };
                 localStorage.removeItem('beammpConfiguratorSettings');
@@ -1439,93 +1507,53 @@
 
         // Server Management Functions
         async function checkServerStatus() {
-            const statusElement = document.getElementById('serverStatus');
             const infoElement = document.getElementById('serverInfo');
             const infoContent = document.getElementById('serverInfoContent');
-            
             try {
-                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Checking...';
-                statusElement.className = 'badge bg-secondary me-2';
-                
                 const response = await fetch('/api/server-status');
                 const result = await response.json();
-                
+                let statusText = result.status;
+                switch (result.status) {
+                    case 'running': statusText = 'Running'; break;
+                    case 'exited': statusText = 'Stopped'; break;
+                    case 'paused': statusText = 'Paused'; break;
+                    case 'restarting': statusText = 'Restarting'; break;
+                }
                 if (result.success) {
-                    // Update status badge
-                    let statusClass = 'bg-secondary';
-                    let statusText = result.status;
-                    
-                    switch (result.status) {
-                        case 'running':
-                            statusClass = 'bg-success';
-                            statusText = 'Running';
-                            break;
-                        case 'exited':
-                            statusClass = 'bg-danger';
-                            statusText = 'Stopped';
-                            break;
-                        case 'paused':
-                            statusClass = 'bg-warning';
-                            statusText = 'Paused';
-                            break;
-                        case 'restarting':
-                            statusClass = 'bg-info';
-                            statusText = 'Restarting';
-                            break;
-                    }
-                    
-                    statusElement.className = `badge ${statusClass} me-2`;
-                    statusElement.textContent = statusText;
-                    
-                    // Show server information
                     infoContent.innerHTML = `
-                        <div class="row">
-                            <div class="col-md-6">
-                                <strong>Container Name:</strong> ${result.container_name}<br>
-                                <strong>Container ID:</strong> ${result.container_id}<br>
-                                <strong>Status:</strong> ${result.status}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Image:</strong> ${result.image}<br>
-                                <strong>Created:</strong> ${new Date(result.created).toLocaleString()}
-                            </div>
+                        <div class="server-info-row">
+                            <span class="server-info-label">Container Name:</span>
+                            <span class="server-info-value">${result.container_name}</span>
+                        </div>
+                        <div class="server-info-row">
+                            <span class="server-info-label">Image:</span>
+                            <span class="server-info-value">${result.image}</span>
+                        </div>
+                        <div class="server-info-row">
+                            <span class="server-info-label">Container ID:</span>
+                            <span class="server-info-value server-info-id">${result.container_id}</span>
+                        </div>
+                        <div class="server-info-row">
+                            <span class="server-info-label">Created:</span>
+                            <span class="server-info-value">${new Date(result.created).toLocaleString()}</span>
+                        </div>
+                        <div class="server-info-row">
+                            <span class="server-info-label">Status:</span>
+                            <span class="server-info-value server-info-status ${result.status.toLowerCase()}"><span class="status-dot"></span>${statusText}</span>
                         </div>
                     `;
                     infoElement.style.display = 'block';
-                    
                 } else {
-                    statusElement.className = 'badge bg-warning me-2';
-                    statusText = 'Unavailable';
-                    
                     if (result.message.includes('Docker module not available')) {
-                        statusText = 'Docker Not Available';
-                        infoContent.innerHTML = `
-                            <div class="alert alert-warning mb-0">
-                                <strong>Docker Module Not Installed:</strong> Server management features require the Docker Python module. 
-                                Install it with: <code>pip install docker</code>
-                            </div>
-                        `;
+                        infoContent.innerHTML = `<div class="alert alert-warning mb-0"><strong>Docker Module Not Installed:</strong> Server management features require the Docker Python module. Install it with: <code>pip install docker</code></div>`;
                     } else if (result.message.includes('Docker client not available')) {
-                        statusText = 'Docker Not Connected';
-                        infoContent.innerHTML = `
-                            <div class="alert alert-warning mb-0">
-                                <strong>Docker Not Connected:</strong> Cannot connect to Docker daemon. 
-                                Ensure Docker is running and accessible.
-                            </div>
-                        `;
+                        infoContent.innerHTML = `<div class="alert alert-warning mb-0"><strong>Docker Not Connected:</strong> Cannot connect to Docker daemon. Ensure Docker is running and accessible.</div>`;
                     } else {
-                        statusText = 'Error';
                         infoContent.innerHTML = `<strong>Error:</strong> ${result.message}`;
                     }
-                    
-                    statusElement.textContent = statusText;
                     infoElement.style.display = 'block';
                 }
-                
             } catch (error) {
-                statusElement.className = 'badge bg-danger me-2';
-                statusElement.textContent = 'Error';
-                
                 infoContent.innerHTML = `<strong>Error:</strong> ${error.message}`;
                 infoElement.style.display = 'block';
             }

@@ -5,14 +5,9 @@ from datetime import datetime
 import json
 import shutil
 import argparse
-
-# Try to import docker, but make it optional
-try:
-    import docker
-    DOCKER_AVAILABLE = True
-except ImportError:
-    DOCKER_AVAILABLE = False
-    print("Warning: Docker module not available. Server management features will be disabled.")
+import requests
+import base64
+from functools import wraps
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
@@ -21,8 +16,8 @@ app.secret_key = os.environ.get('SECRET_KEY', 'beammp_config_secret_key_2024')
 
 # Parse command-line arguments for development overrides
 parser = argparse.ArgumentParser(description="BeamMP Server Configurator")
-parser.add_argument('--config-dir', type=str, help='Path to server config directory')
-parser.add_argument('--backup-dir', type=str, help='Path to server backup directory')
+parser.add_argument('--config-dir', type=str, help='Path to app config directory')
+parser.add_argument('--backup-dir', type=str, help='Path to app backup directory')
 parser.add_argument('--server-dir', type=str, help='Path to server data directory')
 args, unknown = parser.parse_known_args()
 
@@ -31,26 +26,12 @@ CONFIG_DIR = args.config_dir or os.environ.get('CONFIG_DIR', '/config')
 BACKUP_DIR = args.backup_dir or os.environ.get('BACKUP_DIR', '/backup')
 SERVER_DIR = args.server_dir or os.environ.get('SERVER_DIR', '/server')
 LOG_DIR = SERVER_DIR
-CONFIG_FILE = os.path.join(SERVER_DIR, 'ServerConfig.toml')
+SERVER_CONFIG_FILE = os.path.join(SERVER_DIR, 'ServerConfig.toml')
 APP_CONFIG_FILE = os.path.join(CONFIG_DIR, 'app_config.json')
 USER_CONFIG_FILE = os.path.join(CONFIG_DIR, 'user_config.json')
 
-# Docker configuration
-DOCKER_CLIENT = None
+DOCKER_PROXY_URL = os.environ.get('DOCKER_HOST', 'http://docker-proxy:2375')
 BEAMMP_CONTAINER_NAME = os.environ.get('BEAMMP_CONTAINER_NAME', 'beammp-server')
-
-# Initialize Docker client only if docker module is available
-if DOCKER_AVAILABLE:
-    try:
-        DOCKER_CLIENT = docker.from_env()
-        # Test connection
-        DOCKER_CLIENT.ping()
-        print("Docker client initialized successfully")
-    except Exception as e:
-        print(f"Warning: Could not connect to Docker daemon: {e}")
-        DOCKER_CLIENT = None
-else:
-    print("Docker functionality disabled - docker module not available")
 
 # Ensure directories exist
 for directory in [BACKUP_DIR, CONFIG_DIR]:
@@ -61,7 +42,7 @@ for directory in [BACKUP_DIR, CONFIG_DIR]:
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_APP_CONFIG_FILE = os.path.join(APP_ROOT, 'default_app_config.json')
 if not os.path.exists(APP_CONFIG_FILE):
-    os.makedirs(os.path.dirname(APP_CONFIG_FILE), exist_ok=True)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
     shutil.copy(DEFAULT_APP_CONFIG_FILE, APP_CONFIG_FILE)
     print(f"Created default app config at {APP_CONFIG_FILE}")
 
@@ -106,7 +87,7 @@ def get_server_defaults():
 def load_config():
     """Load the TOML configuration file"""
     try:
-        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        with open(SERVER_CONFIG_FILE, 'r', encoding='utf-8') as f:
             return toml.load(f)
     except FileNotFoundError:
         # Return default config if file doesn't exist
@@ -122,14 +103,14 @@ def save_config(config_data):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = os.path.join(BACKUP_DIR, f"ServerConfig_backup_{timestamp}.toml")
         
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+        if os.path.exists(SERVER_CONFIG_FILE):
+            with open(SERVER_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 current_content = f.read()
             with open(backup_file, 'w', encoding='utf-8') as f:
                 f.write(current_content)
         
         # Save new config
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        with open(SERVER_CONFIG_FILE, 'w', encoding='utf-8') as f:
             toml.dump(config_data, f)
         
         # Enforce backup retention by number of backups
@@ -171,15 +152,71 @@ def index():
     config = load_config()
     return render_template('index.html', config=config)
 
+# --- Security: HTTP Basic Auth Decorator ---
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')  # Must be set in production
+
+def check_auth(auth_header):
+    if not auth_header or not auth_header.startswith('Basic '):
+        return False
+    try:
+        encoded = auth_header.split(' ', 1)[1]
+        decoded = base64.b64decode(encoded).decode('utf-8')
+        username, password = decoded.split(':', 1)
+        return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+    except Exception:
+        return False
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.headers.get('Authorization')
+        if not check_auth(auth):
+            return ('Unauthorized', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+        return f(*args, **kwargs)
+    return decorated
+
+# --- Enforce SECRET_KEY in production ---
+if os.environ.get('FLASK_ENV', '').lower() == 'production' and not os.environ.get('SECRET_KEY'):
+    raise RuntimeError('SECRET_KEY environment variable must be set in production!')
+
+# --- Sanitize file path inputs ---
+# (used in restore_backup and delete_backup)
+
+# --- Validate config/user-config JSON ---
+def validate_config_data(data):
+    # Only allow dict with 'General' and/or 'Misc' keys, each mapping to dict
+    if not isinstance(data, dict):
+        return False
+    for section in data:
+        if section not in ('General', 'Misc'):
+            return False
+        if not isinstance(data[section], dict):
+            return False
+    return True
+
+def validate_user_config_data(data):
+    # Only allow dict with known keys
+    allowed_keys = {'theme', 'customMaps', 'customTags', 'backupRetention', 'serverLogFilename'}
+    if not isinstance(data, dict):
+        return False
+    for k in data:
+        if k not in allowed_keys:
+            return False
+    return True
+
+# --- Restrict Docker proxy access at the network level (see docker-compose.yml comment) ---
+
+# --- Apply auth and validation to sensitive endpoints ---
 @app.route('/api/config', methods=['GET'])
+@requires_auth
 def get_config():
-    """API endpoint to get current configuration"""
     config = load_config()
     return jsonify(config)
 
 @app.route('/api/app-config', methods=['GET'])
+@requires_auth
 def get_app_config():
-    """API endpoint to get application configuration (maps, tags, defaults)"""
     app_config = load_app_config()
     return jsonify(app_config)
 
@@ -198,10 +235,12 @@ def get_tags():
     return jsonify(tags)
 
 @app.route('/api/config', methods=['POST'])
+@requires_auth
 def update_config():
-    """API endpoint to update configuration"""
     try:
         data = request.get_json()
+        if not validate_config_data(data):
+            return jsonify({'success': False, 'message': 'Invalid config data'}), 400
         
         # Convert string values to appropriate types
         for section in data:
@@ -241,14 +280,14 @@ def list_backups():
     return render_template('backups.html', backups=backups)
 
 @app.route('/backup/<filename>')
+@requires_auth
 def restore_backup(filename):
-    """Restore a backup file"""
-    backup_path = os.path.join(BACKUP_DIR, filename)
+    backup_path = os.path.join(BACKUP_DIR, os.path.basename(filename))
     if os.path.exists(backup_path):
         try:
             with open(backup_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            with open(SERVER_CONFIG_FILE, 'w', encoding='utf-8') as f:
                 f.write(content)
             flash(f'Backup {filename} restored successfully!', 'success')
         except Exception as e:
@@ -259,9 +298,9 @@ def restore_backup(filename):
     return redirect(url_for('list_backups'))
 
 @app.route('/backup/delete/<filename>', methods=['POST'])
+@requires_auth
 def delete_backup(filename):
-    """Delete a backup file"""
-    backup_path = os.path.join(BACKUP_DIR, filename)
+    backup_path = os.path.join(BACKUP_DIR, os.path.basename(filename))
     if os.path.exists(backup_path):
         try:
             os.remove(backup_path)
@@ -282,101 +321,80 @@ def health_check():
     except Exception as e:
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
-def restart_beammp_server():
-    """Restart the BeamMP server Docker container"""
-    if not DOCKER_AVAILABLE:
-        return {'success': False, 'message': 'Docker module not available'}
-    
-    if not DOCKER_CLIENT:
-        return {'success': False, 'message': 'Docker client not available'}
-    
+@app.route('/api/containers', methods=['GET'])
+@requires_auth
+def list_containers():
     try:
-        # Find the BeamMP container
-        containers = DOCKER_CLIENT.containers.list(filters={'name': BEAMMP_CONTAINER_NAME})
-        
-        if not containers:
-            # Try to find by partial name match
-            all_containers = DOCKER_CLIENT.containers.list()
-            containers = [c for c in all_containers if BEAMMP_CONTAINER_NAME.lower() in c.name.lower()]
-        
-        if not containers:
-            return {'success': False, 'message': f'BeamMP container "{BEAMMP_CONTAINER_NAME}" not found'}
-        
-        container = containers[0]
-        
-        # Restart the container
-        container.restart(timeout=30)
-        
-        return {
-            'success': True, 
-            'message': f'BeamMP server restarted successfully',
-            'container_name': container.name,
-            'container_id': container.short_id
-        }
-        
-    except docker.errors.APIError as e:
-        return {'success': False, 'message': f'Docker API error: {str(e)}'}
+        resp = requests.get(f"{DOCKER_PROXY_URL}/containers/json?all=1", timeout=3)
+        resp.raise_for_status()
+        containers = resp.json()
+        result = [
+            {
+                'id': c['Id'],
+                'names': c.get('Names', []),
+                'image': c.get('Image'),
+                'status': c.get('Status'),
+                'state': c.get('State'),
+            }
+            for c in containers
+        ]
+        return jsonify({'success': True, 'containers': result})
     except Exception as e:
-        return {'success': False, 'message': f'Error restarting container: {str(e)}'}
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def find_container_id_by_name(container_name):
+    try:
+        resp = requests.get(f"{DOCKER_PROXY_URL}/containers/json?all=1", timeout=3)
+        resp.raise_for_status()
+        containers = resp.json()
+        debug_names = []
+        for c in containers:
+            for n in c.get('Names', []):
+                debug_names.append(n)
+                if n == f"/{container_name}":
+                    return c['Id'], n.strip('/'), debug_names
+        return None, None, debug_names
+    except Exception as e:
+        return None, None, [f'Exception: {str(e)}']
 
 @app.route('/api/restart-server', methods=['POST'])
+@requires_auth
 def api_restart_server():
-    """API endpoint to restart the BeamMP server"""
-    result = restart_beammp_server()
-    status_code = 200 if result['success'] else 500
-    return jsonify(result), status_code
+    container_id, resolved_name, debug_names = find_container_id_by_name(BEAMMP_CONTAINER_NAME)
+    if not container_id:
+        return jsonify({'success': False, 'message': f'BeamMP container "{BEAMMP_CONTAINER_NAME}" not found', 'containers_seen': debug_names}), 404
+    try:
+        resp = requests.post(f"{DOCKER_PROXY_URL}/containers/{container_id}/restart", timeout=10)
+        if resp.status_code == 204:
+            return jsonify({'success': True, 'message': f'BeamMP server restarted successfully', 'container_name': resolved_name, 'container_id': container_id}), 200
+        else:
+            return jsonify({'success': False, 'message': f'Failed to restart container: {resp.text}', 'containers_seen': debug_names}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error restarting container: {str(e)}', 'containers_seen': debug_names}), 500
 
 @app.route('/api/server-status', methods=['GET'])
+@requires_auth
 def api_server_status():
-    """API endpoint to get BeamMP server status"""
-    if not DOCKER_AVAILABLE:
-        return jsonify({
-            'success': False, 
-            'message': 'Docker module not available',
-            'status': 'unknown'
-        })
-    
-    if not DOCKER_CLIENT:
-        return jsonify({
-            'success': False, 
-            'message': 'Docker client not available',
-            'status': 'unknown'
-        })
-    
+    container_id, resolved_name, debug_names = find_container_id_by_name(BEAMMP_CONTAINER_NAME)
+    if not container_id:
+        return jsonify({'success': False, 'message': f'BeamMP container "{BEAMMP_CONTAINER_NAME}" not found', 'status': 'not_found', 'containers_seen': debug_names}), 404
     try:
-        # Find the BeamMP container
-        containers = DOCKER_CLIENT.containers.list(filters={'name': BEAMMP_CONTAINER_NAME})
-        
-        if not containers:
-            # Try to find by partial name match
-            all_containers = DOCKER_CLIENT.containers.list()
-            containers = [c for c in all_containers if BEAMMP_CONTAINER_NAME.lower() in c.name.lower()]
-        
-        if not containers:
-            return jsonify({
-                'success': False,
-                'message': f'BeamMP container "{BEAMMP_CONTAINER_NAME}" not found',
-                'status': 'not_found'
-            })
-        
-        container = containers[0]
-        container.reload()  # Refresh container info
-        
+        resp = requests.get(f"{DOCKER_PROXY_URL}/containers/{container_id}/json", timeout=3)
+        resp.raise_for_status()
+        info = resp.json()
+        status = info['State']['Status']
+        created = info['Created']
+        image = info['Config']['Image']
         return jsonify({
             'success': True,
-            'status': container.status,
-            'container_name': container.name,
-            'container_id': container.short_id,
-            'created': container.attrs['Created'],
-            'image': container.image.tags[0] if container.image.tags else container.image.id
+            'status': status,
+            'container_name': resolved_name,
+            'container_id': container_id,
+            'created': created,
+            'image': image
         })
-        
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': f'Error getting server status: {str(e)}',
-            'status': 'error'
-        })
+        return jsonify({'success': False, 'message': f'Error getting server status: {str(e)}', 'status': 'error', 'containers_seen': debug_names}), 500
 
 @app.route('/api/server-log', methods=['GET'])
 def get_server_log():
@@ -410,21 +428,20 @@ def get_server_log():
         })
 
 @app.route('/api/container-log', methods=['GET'])
+@requires_auth
 def get_container_log():
-    """API endpoint to get the BeamMP container logs"""
-    if not DOCKER_CLIENT:
-        return jsonify({'success': False, 'log': '', 'message': 'Docker client not available'})
+    container_id, resolved_name, debug_names = find_container_id_by_name(BEAMMP_CONTAINER_NAME)
+    if not container_id:
+        return jsonify({'success': False, 'log': '', 'message': f'Container "{BEAMMP_CONTAINER_NAME}" not found', 'containers_seen': debug_names}), 404
     try:
-        user_config = load_user_config()
-        container_name = user_config.get('containerName', BEAMMP_CONTAINER_NAME)
-        containers = DOCKER_CLIENT.containers.list(all=True, filters={'name': container_name})
-        if not containers:
-            return jsonify({'success': False, 'log': '', 'message': f'Container "{container_name}" not found'})
-        container = containers[0]
-        logs = container.logs(tail=200).decode('utf-8', errors='replace')
-        return jsonify({'success': True, 'log': logs})
+        resp = requests.get(f"{DOCKER_PROXY_URL}/containers/{container_id}/logs?tail=200&stdout=1&stderr=1", timeout=5)
+        if resp.status_code == 200:
+            logs = resp.content.decode('utf-8', errors='replace')
+            return jsonify({'success': True, 'log': logs})
+        else:
+            return jsonify({'success': False, 'log': '', 'message': f'Failed to get logs: {resp.text}', 'containers_seen': debug_names})
     except Exception as e:
-        return jsonify({'success': False, 'log': '', 'message': str(e)})
+        return jsonify({'success': False, 'log': '', 'message': str(e), 'containers_seen': debug_names})
 
 # Helper to load user config
 
@@ -445,13 +462,17 @@ def save_user_config(data):
         return False
 
 @app.route('/api/user-config', methods=['GET'])
+@requires_auth
 def get_user_config():
     return jsonify(load_user_config())
 
 @app.route('/api/user-config', methods=['POST'])
+@requires_auth
 def update_user_config():
     try:
         data = request.get_json()
+        if not validate_user_config_data(data):
+            return jsonify({'success': False, 'message': 'Invalid user config data'}), 400
         save_user_config(data)
         return jsonify({'success': True})
     except Exception as e:
@@ -468,7 +489,7 @@ if __name__ == '__main__':
         os.environ.get('FLASK_ENV', '').lower() == 'development'
     )
     print(f"Starting BeamMP Configurator on {host}:{port}")
-    print(f"Config file: {CONFIG_FILE}")
+    print(f"Server config file: {SERVER_CONFIG_FILE}")
     print(f"Backup directory: {BACKUP_DIR}")
     print(f"Flask debug mode: {debug}")
     app.run(debug=debug, host=host, port=port) 
