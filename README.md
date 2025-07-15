@@ -169,3 +169,11 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 ## Support
 
 - For issues and questions, open an issue on the [GitHub repository](https://github.com/V5U2/BeamMP-Server-Configurator).
+
+## 🚧 TODO Roadmap
+
+Here are some planned improvements and features for future releases:
+
+- [ ] Remove the outer box from the Server Management menu for a cleaner look
+- [ ] Implement better authentication, including SSO and auth header support
+- [ ] Add improved mod management with upload and removal functionality
