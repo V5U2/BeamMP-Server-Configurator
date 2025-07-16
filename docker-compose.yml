@@ -1,8 +1,7 @@
-# To pull the latest image from GitHub Container Registry instead of building locally, use:
-# docker pull ghcr.io/v5u2/beammp-server-configurator:latest
 services:
   beammp-configurator:
-    build: .
+    # image: ghcr.io/v5u2/beammp-server-configurator:latest # To pull the latest image from GitHub Container Registry instead of building locally
+    build: . # To build the image locally
     container_name: beammp-configurator
     ports:
       - "5000:5000"

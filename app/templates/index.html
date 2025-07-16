@@ -314,9 +314,8 @@
             color: white;
             padding: 1rem 1.5rem;
             font-weight: 600;
-            font-size: 1.15rem;
-            border-radius: 12px 12px 0 0;
-            letter-spacing: 0.5px;
+            font-size: 1.1rem;
+            border-radius: 15px 15px 0 0;
         }
         .server-info-content {
             padding: 1.5rem 2rem 1.2rem 2rem;
@@ -331,7 +330,7 @@
         }
         .server-info-label {
             font-weight: 600;
-            color: #90caf9;
+            color: var(--text-primary);
             margin-bottom: 0.1rem;
             font-size: 1rem;
         }
@@ -379,6 +378,10 @@
             border-radius: 8px;
         }
         .custom-scroll::-webkit-scrollbar-thumb:hover, .main-container::-webkit-scrollbar-thumb:hover {
+            background: #ff884d;
+        }
+        textarea.form-control::selection {
+            color: var(--text-primary);
             background: #ff884d;
         }
     </style>
@@ -653,7 +656,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <hr>
                                     <!-- Server Log -->
                                     <div class="row mt-3">
                                         <div class="col-md-12">
@@ -742,7 +744,7 @@
                                             <!-- Custom Maps -->
                                             <div class="field-group mb-4">
                                                 <label class="field-label">Custom Maps</label>
-                                                <textarea class="form-control" id="customMaps" rows="8" placeholder="Add custom maps (one per line)&#10;Format: Display Name|/path/to/map/info.json&#10;&#10;Example:&#10;My Custom Map|/levels/custom_map/info.json"></textarea>
+                                                <textarea class="form-control" id="customMaps" rows="8" placeholder="Add custom maps (one per line)&#10;Format: Display Name|mapname or mapname&#10;&#10;Example:&#10;Okayama|okayama&#10;okayama"></textarea>
                                                 <div class="field-description">Add custom maps to the dropdown</div>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="saveCustomMaps()">
                                                     <i class="fas fa-save me-1"></i>Save Maps

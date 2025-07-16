@@ -427,6 +427,21 @@ def get_server_log():
             'message': f'Error reading log file: {str(e)}'
         })
 
+def demux_docker_logs(log_bytes):
+    # Docker multiplexed logs: each frame is 8 bytes header + payload
+    out = []
+    i = 0
+    while i + 8 <= len(log_bytes):
+        header = log_bytes[i:i+8]
+        length = int.from_bytes(header[4:8], 'big')
+        payload = log_bytes[i+8:i+8+length]
+        try:
+            out.append(payload.decode('utf-8', errors='replace'))
+        except Exception:
+            out.append(str(payload))
+        i += 8 + length
+    return ''.join(out)
+
 @app.route('/api/container-log', methods=['GET'])
 @requires_auth
 def get_container_log():
@@ -436,7 +451,7 @@ def get_container_log():
     try:
         resp = requests.get(f"{DOCKER_PROXY_URL}/containers/{container_id}/logs?tail=200&stdout=1&stderr=1", timeout=5)
         if resp.status_code == 200:
-            logs = resp.content.decode('utf-8', errors='replace')
+            logs = demux_docker_logs(resp.content)
             return jsonify({'success': True, 'log': logs})
         else:
             return jsonify({'success': False, 'log': '', 'message': f'Failed to get logs: {resp.text}', 'containers_seen': debug_names})
@@ -461,10 +476,28 @@ def save_user_config(data):
         print(f"Error saving user config: {e}")
         return False
 
+def normalize_custom_map_entry(entry):
+    parts = entry.split('|')
+    if len(parts) == 2:
+        name = parts[0].strip()
+        path = parts[1].strip()
+        if '/' not in path and not path.endswith('.json'):
+            path = f"/levels/{path}/info.json"
+        return f"{name}|{path}"
+    else:
+        val = entry.strip()
+        if '/' not in val and not val.endswith('.json'):
+            val = f"/levels/{val}/info.json"
+        return val
+
 @app.route('/api/user-config', methods=['GET'])
 @requires_auth
 def get_user_config():
-    return jsonify(load_user_config())
+    config = load_user_config()
+    # Normalize customMaps to always use full path format
+    if 'customMaps' in config and isinstance(config['customMaps'], list):
+        config['customMaps'] = [normalize_custom_map_entry(e) for e in config['customMaps']]
+    return jsonify(config)
 
 @app.route('/api/user-config', methods=['POST'])
 @requires_auth
@@ -473,6 +506,9 @@ def update_user_config():
         data = request.get_json()
         if not validate_user_config_data(data):
             return jsonify({'success': False, 'message': 'Invalid user config data'}), 400
+        # Auto-complete custom map paths
+        if 'customMaps' in data and isinstance(data['customMaps'], list):
+            data['customMaps'] = [normalize_custom_map_entry(e) for e in data['customMaps']]
         save_user_config(data)
         return jsonify({'success': True})
     except Exception as e:
