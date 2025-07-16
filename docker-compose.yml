@@ -19,13 +19,18 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - AUTH_MODE=${AUTH_MODE:-BASIC}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_AUTHORIZE_URL=${OAUTH_AUTHORIZE_URL}
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL}
+      - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL}
+      - OAUTH_SCOPE=${OAUTH_SCOPE}
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
+      - OAUTH_PROVIDER=${OAUTH_PROVIDER}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
+      - OIDC_JWKS_URL=${OIDC_JWKS_URL}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/config"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
     networks:
       - beammp-network
 

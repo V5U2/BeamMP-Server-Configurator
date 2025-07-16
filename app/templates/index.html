@@ -124,6 +124,10 @@
             color: var(--accent-color);
             background-color: rgba(255, 107, 53, 0.1);
         }
+        body.light-mode .nav-tabs .nav-link:hover {
+            color: #000;
+            background-color: rgba(255, 107, 53, 0.18);
+        }
         .loading {
             display: none;
         }
@@ -799,10 +803,15 @@
                                             <!-- Theme Selection -->
                                             <div class="field-group mb-4">
                                                 <label class="field-label">Theme</label>
-                                                <select class="form-select" id="themeSelect" onchange="changeTheme()">
-                                                    <option value="dark">Dark Theme</option>
-                                                    <option value="light">Light Theme</option>
-                                                </select>
+                                                <div class="dropdown mb-2" id="themeDropdownContainer">
+                                                    <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="themeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <span id="selectedThemeName">Dark Theme</span>
+                                                    </button>
+                                                    <ul class="dropdown-menu w-100" id="themeDropdownMenu" aria-labelledby="themeDropdown">
+                                                        <li><a class="dropdown-item" href="#" data-value="dark">Dark Theme</a></li>
+                                                        <li><a class="dropdown-item" href="#" data-value="light">Light Theme</a></li>
+                                                    </ul>
+                                                </div>
                                                 <div class="field-description">Choose your preferred color theme</div>
                                             </div>
 
@@ -1242,6 +1251,11 @@
 
         function applyTheme(theme) {
             const root = document.documentElement;
+            if (theme === 'light') {
+                document.body.classList.add('light-mode');
+            } else {
+                document.body.classList.remove('light-mode');
+            }
             
             switch(theme) {
                 case 'light':
@@ -1508,24 +1522,34 @@
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alert-container');
             const alertId = 'alert-' + Date.now();
-            
-            const alertHtml = `
-                <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert">
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            
+            let alertHtml;
+            if (message && message.toLowerCase().includes('saml')) {
+                // Show full SAML error, scrollable if long, and do not auto-dismiss
+                alertHtml = `
+                    <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert" style="max-height: 300px; overflow-y: auto;">
+                        <strong>SAML Error:</strong><br><pre style="white-space: pre-wrap; word-break: break-all;">${message}</pre>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            } else {
+                alertHtml = `
+                    <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert">
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            }
             alertContainer.innerHTML = alertHtml;
-            
-            // Auto-dismiss after 5 seconds
-            setTimeout(() => {
-                const alert = document.getElementById(alertId);
-                if (alert) {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }
-            }, 5000);
+            // Only auto-dismiss if not SAML error
+            if (!message || !message.toLowerCase().includes('saml')) {
+                setTimeout(() => {
+                    const alert = document.getElementById(alertId);
+                    if (alert) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                }, 5000);
+            }
         }
 
         // Handle tab changes to load backups when needed
@@ -1880,6 +1904,24 @@
                 document.getElementById('userInfoContainer').style.display = 'none';
             }
         }
+
+        // --- Theme Dropdown ---
+        function updateThemeDropdown() {
+            const selectedThemeName = document.getElementById('selectedThemeName');
+            selectedThemeName.textContent = userConfig.theme === 'light' ? 'Light Theme' : 'Dark Theme';
+        }
+        document.getElementById('themeDropdownMenu').querySelectorAll('a.dropdown-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const value = this.getAttribute('data-value');
+                userConfig.theme = value;
+                applyTheme(value);
+                updateThemeDropdown();
+                saveUserConfig();
+            });
+        });
+        // Call on load
+        updateThemeDropdown();
     </script>
 </body>
 </html> 

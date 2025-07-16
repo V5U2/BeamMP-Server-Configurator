@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 import toml
 import os
 from datetime import datetime
@@ -8,6 +8,15 @@ import argparse
 import requests
 import base64
 from functools import wraps
+import werkzeug
+# SAML imports
+from saml2 import BINDING_HTTP_REDIRECT, BINDING_HTTP_POST
+from saml2.config import Config as Saml2Config
+from saml2.client import Saml2Client
+from saml2.metadata import entity_descriptor
+from saml2.response import AuthnResponse
+from saml2.saml import name_id_from_string
+from authlib.integrations.flask_client import OAuth
 
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
@@ -152,26 +161,227 @@ def index():
     config = load_config()
     return render_template('index.html', config=config)
 
-# --- Security: HTTP Basic Auth Decorator ---
+# --- Authentication Mode Configuration ---
+AUTH_MODE = os.environ.get('AUTH_MODE', 'BASIC').upper()  # Options: NO_AUTH, BASIC, SAML, OAUTH
+if AUTH_MODE not in ('NO_AUTH', 'BASIC', 'SAML', 'OAUTH'):
+    print(f"[WARN] Invalid AUTH_MODE '{AUTH_MODE}', defaulting to BASIC.")
+    AUTH_MODE = 'BASIC'
+if AUTH_MODE == 'NO_AUTH':
+    print("[WARNING] Running with NO_AUTH mode: All endpoints are open! This is NOT recommended for production.")
+
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')  # Must be set in production
 
-def check_auth(auth_header):
-    if not auth_header or not auth_header.startswith('Basic '):
-        return False
-    try:
-        encoded = auth_header.split(' ', 1)[1]
-        decoded = base64.b64decode(encoded).decode('utf-8')
-        username, password = decoded.split(':', 1)
-        return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
-    except Exception:
-        return False
+# --- SAML Configuration ---
+SAML_IDP_METADATA_URL = os.environ.get('SAML_IDP_METADATA_URL')  # e.g. Authentik or Google Workspace metadata URL
+SAML_SP_ENTITY_ID = os.environ.get('SAML_SP_ENTITY_ID', 'http://localhost:5000/saml/metadata')
+SAML_SP_ACS_URL = os.environ.get('SAML_SP_ACS_URL', 'http://localhost:5000/saml/acs')
+SAML_SP_CERT = os.environ.get('SAML_SP_CERT')  # Optional: path to SP cert (PEM)
+SAML_SP_KEY = os.environ.get('SAML_SP_KEY')    # Optional: path to SP key (PEM)
 
+# SAML config loader
+def load_saml_config():
+    saml_settings = {
+        'entityid': SAML_SP_ENTITY_ID,
+        'service': {
+            'sp': {
+                'endpoints': {
+                    'assertion_consumer_service': [
+                        (SAML_SP_ACS_URL, BINDING_HTTP_POST),
+                        (SAML_SP_ACS_URL, BINDING_HTTP_REDIRECT),
+                    ],
+                },
+                'allow_unsolicited': True,
+                'authn_requests_signed': False,
+                'logout_requests_signed': True,
+                'want_assertions_signed': True,
+                'want_response_signed': False,
+            },
+        },
+        'metadata': {
+            'remote': [
+                {'url': SAML_IDP_METADATA_URL},
+            ]
+        },
+        'debug': 1,
+    }
+    if SAML_SP_CERT and SAML_SP_KEY:
+        saml_settings['key_file'] = SAML_SP_KEY
+        saml_settings['cert_file'] = SAML_SP_CERT
+    saml_config = Saml2Config()
+    saml_config.load(saml_settings)
+    saml_config.allow_unknown_attributes = True
+    return saml_config
+
+def get_saml_client():
+    return Saml2Client(config=load_saml_config())
+
+# --- SAML Endpoints ---
+@app.route('/saml/login')
+def saml_login():
+    saml_client = get_saml_client()
+    reqid, info = saml_client.prepare_for_authenticate()
+    for key, value in info['headers']:
+        if key == 'Location':
+            return redirect(value)
+    return 'Unable to redirect to SAML IdP', 500
+
+@app.route('/saml/acs', methods=['POST'])
+def saml_acs():
+    saml_client = get_saml_client()
+    saml_response = request.form.get('SAMLResponse')
+    if not saml_response:
+        return 'Missing SAMLResponse', 400
+    authn_response = saml_client.parse_authn_request_response(
+        saml_response,
+        BINDING_HTTP_POST
+    )
+    if not authn_response or not authn_response.ava:
+        return 'Invalid SAML response', 400
+    # Store user info in session
+    session['saml_user'] = {
+        'name_id': str(authn_response.name_id),
+        'attributes': authn_response.ava
+    }
+    # Optionally, redirect to original URL (RelayState)
+    relay_state = request.form.get('RelayState')
+    return redirect(relay_state or url_for('index'))
+
+@app.route('/saml/metadata')
+def saml_metadata():
+    saml_config = load_saml_config()
+    ed = entity_descriptor(saml_config)
+    resp = app.response_class(ed.to_string(), mimetype='text/xml')
+    return resp
+
+@app.route('/saml/logout')
+def saml_logout():
+    session.pop('saml_user', None)
+    return redirect('/')
+
+# --- OAuth2 Configuration ---
+OAUTH_CLIENT_ID = os.environ.get('OAUTH_CLIENT_ID')
+OAUTH_CLIENT_SECRET = os.environ.get('OAUTH_CLIENT_SECRET')
+OAUTH_AUTHORIZE_URL = os.environ.get('OAUTH_AUTHORIZE_URL')
+OAUTH_TOKEN_URL = os.environ.get('OAUTH_TOKEN_URL')
+OAUTH_USERINFO_URL = os.environ.get('OAUTH_USERINFO_URL')
+OAUTH_SCOPE = os.environ.get('OAUTH_SCOPE', 'openid email profile')
+OAUTH_REDIRECT_URI = os.environ.get('OAUTH_REDIRECT_URI', 'http://localhost:5000/oauth/callback')
+OAUTH_PROVIDER = os.environ.get('OAUTH_PROVIDER', 'authentik')
+
+OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL')
+OIDC_JWKS_URL = os.environ.get('OIDC_JWKS_URL')
+
+# Check required OAuth2 variables
+if AUTH_MODE == 'OAUTH':
+    missing = []
+    if not OAUTH_CLIENT_ID:
+        missing.append('OAUTH_CLIENT_ID')
+    if not OAUTH_CLIENT_SECRET:
+        missing.append('OAUTH_CLIENT_SECRET')
+    if not OAUTH_REDIRECT_URI:
+        missing.append('OAUTH_REDIRECT_URI')
+    # Only require manual endpoints if discovery is not used
+    if not OIDC_DISCOVERY_URL:
+        if not OAUTH_AUTHORIZE_URL:
+            missing.append('OAUTH_AUTHORIZE_URL')
+        if not OAUTH_TOKEN_URL:
+            missing.append('OAUTH_TOKEN_URL')
+        if not OAUTH_USERINFO_URL:
+            missing.append('OAUTH_USERINFO_URL')
+    if missing:
+        raise RuntimeError(f"Missing required OAuth2 environment variables: {', '.join(missing)}")
+
+oauth = OAuth(app)
+
+# Register OAuth client with OIDC discovery if available, else manual config
+if OIDC_DISCOVERY_URL:
+    oauth.register(
+        name='main',
+        server_metadata_url=OIDC_DISCOVERY_URL,
+        client_id=OAUTH_CLIENT_ID,
+        client_secret=OAUTH_CLIENT_SECRET,
+        client_kwargs={'scope': OAUTH_SCOPE},
+    )
+elif OAUTH_AUTHORIZE_URL and OAUTH_TOKEN_URL and OAUTH_USERINFO_URL:
+    extra_args = {}
+    if OIDC_JWKS_URL:
+        extra_args['jwks_uri'] = OIDC_JWKS_URL
+    oauth.register(
+        name='main',
+        client_id=OAUTH_CLIENT_ID,
+        client_secret=OAUTH_CLIENT_SECRET,
+        access_token_url=OAUTH_TOKEN_URL,
+        access_token_params=None,
+        authorize_url=OAUTH_AUTHORIZE_URL,
+        authorize_params=None,
+        api_base_url=OAUTH_USERINFO_URL.rsplit('/', 1)[0]+'/',
+        client_kwargs={'scope': OAUTH_SCOPE},
+        **extra_args
+    )
+else:
+    raise RuntimeError('No valid OIDC discovery URL or manual OAuth endpoints provided.')
+
+@app.route('/oauth/login')
+def oauth_login():
+    redirect_uri = OAUTH_REDIRECT_URI
+    return oauth.main.authorize_redirect(redirect_uri)
+
+@app.route('/oauth/callback')
+def oauth_callback():
+    print("In /oauth/callback")
+    try:
+        token = oauth.main.authorize_access_token()
+        print("Token:", token)
+        if OIDC_DISCOVERY_URL:
+            userinfo = oauth.main.userinfo()
+        else:
+            userinfo = oauth.main.get(OAUTH_USERINFO_URL).json()
+        print("Userinfo:", userinfo)
+        session['oauth_user'] = userinfo
+        next_url = request.args.get('next') or url_for('index')
+        return redirect(next_url)
+    except Exception as e:
+        print("OAuth callback error:", e)
+        return f"OAuth callback error: {e}", 500
+
+@app.route('/oauth/logout')
+def oauth_logout():
+    session.pop('oauth_user', None)
+    return redirect('/')
+
+# --- Update check_auth for OAUTH ---
+def check_auth(auth_header):
+    if AUTH_MODE == 'NO_AUTH':
+        return True
+    if AUTH_MODE == 'BASIC':
+        if not auth_header or not auth_header.startswith('Basic '):
+            return False
+        try:
+            encoded = auth_header.split(' ', 1)[1]
+            decoded = base64.b64decode(encoded).decode('utf-8')
+            username, password = decoded.split(':', 1)
+            return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
+        except Exception:
+            return False
+    if AUTH_MODE == 'SAML':
+        return 'saml_user' in session
+    if AUTH_MODE == 'OAUTH':
+        return 'oauth_user' in session
+    return False
+
+# --- Update requires_auth for OAUTH ---
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        if AUTH_MODE == 'NO_AUTH':
+            return f(*args, **kwargs)
         auth = request.headers.get('Authorization')
         if not check_auth(auth):
+            if AUTH_MODE == 'SAML':
+                return redirect(url_for('saml_login', next=request.url))
+            if AUTH_MODE == 'OAUTH':
+                return redirect(url_for('oauth_login', next=request.url))
             return ('Unauthorized', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
         return f(*args, **kwargs)
     return decorated
@@ -514,7 +724,86 @@ def update_user_config():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+MODS_DIR = os.path.join(SERVER_DIR, 'Resources', 'Server')
+
+@app.route('/api/mods', methods=['GET'])
+@requires_auth
+def list_mods():
+    """List all zip files in the mods directory"""
+    try:
+        if not os.path.exists(MODS_DIR):
+            return jsonify({'success': True, 'mods': []})
+        mods = [f for f in os.listdir(MODS_DIR) if f.lower().endswith('.zip')]
+        return jsonify({'success': True, 'mods': mods})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/mods', methods=['POST'])
+@requires_auth
+def upload_mod():
+    """Upload a zip file to the mods directory"""
+    if 'mod' not in request.files:
+        return jsonify({'success': False, 'message': 'No file part in request'}), 400
+    file = request.files['mod']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'No selected file'}), 400
+    if not file.filename.lower().endswith('.zip'):
+        return jsonify({'success': False, 'message': 'Only .zip files are allowed'}), 400
+    filename = werkzeug.utils.secure_filename(file.filename)
+    os.makedirs(MODS_DIR, exist_ok=True)
+    save_path = os.path.join(MODS_DIR, filename)
+    try:
+        file.save(save_path)
+        return jsonify({'success': True, 'message': f'File {filename} uploaded successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/mods/<modname>', methods=['DELETE'])
+@requires_auth
+def delete_mod(modname):
+    """Delete a zip file from the mods directory"""
+    if not modname.lower().endswith('.zip'):
+        return jsonify({'success': False, 'message': 'Only .zip files can be deleted'}), 400
+    filename = werkzeug.utils.secure_filename(modname)
+    file_path = os.path.join(MODS_DIR, filename)
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'message': 'File not found'}), 404
+    try:
+        os.remove(file_path)
+        return jsonify({'success': True, 'message': f'File {filename} deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# --- Update /api/auth-info for OAUTH ---
+@app.route('/api/auth-info', methods=['GET'])
+def get_auth_info():
+    mode = AUTH_MODE
+    user = None
+    if mode == 'BASIC':
+        auth = request.headers.get('Authorization')
+        if auth and auth.startswith('Basic '):
+            try:
+                encoded = auth.split(' ', 1)[1]
+                decoded = base64.b64decode(encoded).decode('utf-8')
+                username, _ = decoded.split(':', 1)
+                user = username
+            except Exception:
+                user = None
+    elif mode == 'SAML':
+        if 'saml_user' in session:
+            user = session['saml_user']['attributes'].get('email', ['SAML User'])[0]
+        else:
+            user = None
+    elif mode == 'OAUTH':
+        if 'oauth_user' in session:
+            user = session['oauth_user'].get('email') or session['oauth_user'].get('preferred_username')
+        else:
+            user = None
+    return jsonify({'mode': mode, 'user': user})
+
 if __name__ == '__main__':
+    if AUTH_MODE == 'BASIC' and not ADMIN_PASSWORD:
+        print('[WARNING] ADMIN_PASSWORD is not set! You must set this in production.')
     # Get port from environment variable or default to 5000
     port = int(os.environ.get('PORT', 5000))
     # Get host from environment variable or default to 0.0.0.0 for containers

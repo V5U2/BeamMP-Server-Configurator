@@ -40,6 +40,24 @@ BEAMNGMP_DATA=./beamngmp_data
 - **DOCKER_HOST**: Must be `http://docker-proxy:2375`.
 - **CONFIG_DATA, BACKUP_DATA, BEAMNGMP_DATA**: Host paths for config, backup, and BeamNG-MP data directories.
 
+Add these for OAuth2 (Authentik, Google, etc.):
+
+```
+# OAuth2 (for Authentik, Google, etc.)
+AUTH_MODE=OAUTH
+OAUTH_CLIENT_ID=your_client_id
+OAUTH_CLIENT_SECRET=your_client_secret
+OAUTH_AUTHORIZE_URL=https://your-idp.example.com/application/o/authorize/
+OAUTH_TOKEN_URL=https://your-idp.example.com/application/o/token/
+OAUTH_USERINFO_URL=https://your-idp.example.com/application/o/userinfo/
+OAUTH_SCOPE=openid email profile
+OAUTH_REDIRECT_URI=http://yourdomain.com/oauth/callback
+OAUTH_PROVIDER=authentik  # or 'google' for Google Workspace
+```
+
+- For Authentik, use the application URLs from your Authentik OAuth2 app.
+- For Google, use the Google OAuth2 endpoints and set the correct client ID/secret.
+
 ## 🐳 Docker Compose Example
 
 ```yaml
@@ -153,6 +171,8 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 Here are some planned improvements and features for future releases:
 
-- [ ] Remove the outer box from the Server Management menu for a cleaner look
 - [ ] Implement better authentication, including SSO and auth header support
-- [ ] Add improved mod management with upload and removal functionality
+- [ ] Blur elements when not authenticated
+- [ ] Show the authenticated user in the UI
+- [ ] Require authentication to load Docker logs
+- [ ] Mobile theme enhancements
