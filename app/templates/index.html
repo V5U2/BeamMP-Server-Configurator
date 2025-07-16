@@ -60,6 +60,7 @@
             border-color: var(--accent-color);
             box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
             background-color: var(--bg-card);
+            color: var(--text-primary);
         }
         .form-control::placeholder {
             color: var(--text-secondary);
@@ -384,6 +385,68 @@
             color: var(--text-primary);
             background: #ff884d;
         }
+        /* Selection color for all fields */
+        ::selection {
+            color: var(--text-primary);
+            background: #ff884d;
+        }
+        input::selection, textarea::selection {
+            color: var(--text-primary);
+            background: #ff884d;
+        }
+        input::-moz-selection, textarea::-moz-selection {
+            color: var(--text-primary);
+            background: #ff884d;
+        }
+        .input-group .form-control[type="file"] {
+            height: 48px;
+            min-height: 48px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 10px 0 0 10px;
+            border: 2px solid var(--accent-color);
+            box-shadow: none;
+            outline: none;
+            font-size: 1.1rem;
+        }
+        .input-group .form-control[type="file"]::-webkit-file-upload-button {
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 1.1rem;
+            border-radius: 10px 0 0 10px;
+            padding: 10px 18px;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        .input-group .form-control[type="file"]:hover::-webkit-file-upload-button {
+            background: rgba(255,107,53,0.08);
+        }
+        .input-group .form-control[type="file"]::-ms-browse {
+            border-radius: 10px 0 0 10px;
+        }
+        .input-group .btn-primary {
+            height: 48px;
+            min-height: 48px;
+            border-radius: 0 10px 10px 0;
+            font-size: 1.1rem;
+            box-shadow: none;
+        }
+        #modList .list-group-item {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        #modList .btn-outline-danger {
+            border-radius: 8px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -478,6 +541,7 @@
                                                 <div class="dropdown" id="mapDropdownContainer">
                                                     <button class="btn btn-outline-primary dropdown-toggle w-100 text-start" type="button" id="mapDropdown" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                                                         <span id="selectedMapName">Select a map</span>
+                                                        <span id="selectedMapCurrent" class="text-primary small ms-2" style="display:none;"></span>
                                                         <span id="selectedMapPath" class="text-muted small ms-2"></span>
                                                     </button>
                                                     <ul class="dropdown-menu w-100" id="mapDropdownMenu" aria-labelledby="mapDropdown">
@@ -616,14 +680,30 @@
                                 <div class="p-4">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <div class="field-group">
-                                                <label class="field-label">Custom Server Mods</label>
-                                                <input type="text" class="form-control" id="Mods" data-section="General" placeholder="mod1,mod2,mod3">
-                                                <div class="field-description">Comma-separated list of custom mod folder names</div>
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Upload Mod (.zip)</label>
+                                                <div class="input-group">
+                                                    <input type="file" class="form-control" id="modUploadInput" accept=".zip">
+                                                    <button class="btn btn-primary" id="modUploadBtn" type="button">
+                                                        <i class="fas fa-upload me-1"></i>Upload
+                                                    </button>
+                                                </div>
+                                                <div class="field-description">Upload a .zip mod file to the server's Resources/Server directory.</div>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <!-- Empty column for consistent spacing -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Current Mods</label>
+                                                <div id="modListContainer">
+                                                    <div class="text-center" id="modListSpinner" style="display:none;">
+                                                        <div class="spinner-border text-primary" role="status">
+                                                            <span class="visually-hidden">Loading...</span>
+                                                        </div>
+                                                    </div>
+                                                    <ul class="list-group" id="modList"></ul>
+                                                </div>
+                                                <div class="field-description">Remove unwanted mods from the server.</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1119,6 +1199,8 @@
                     }
                 });
             }
+
+            updateUserInfo();
         });
 
         async function loadUserConfig() {
@@ -1134,6 +1216,8 @@
             document.getElementById('serverLogFilename').value = userConfig.serverLogFilename || 'Server.log';
             document.getElementById('customMaps').value = (userConfig.customMaps || []).join('\n');
             document.getElementById('customTags').value = (userConfig.customTags || []).join('\n');
+            // Ensure theme is applied on page load
+            applyTheme(userConfig.theme || 'dark');
         }
 
         async function saveUserConfig() {
@@ -1161,7 +1245,8 @@
             
             switch(theme) {
                 case 'light':
-                    root.style.setProperty('--bg-primary', '#ffffff');
+                    // Use dark mode background for the page, but light backgrounds for form elements
+                    root.style.setProperty('--bg-primary', '#1a1a1a');
                     root.style.setProperty('--bg-secondary', '#fafafa');
                     root.style.setProperty('--bg-card', '#ffffff');
                     root.style.setProperty('--bg-container', 'rgba(248, 248, 248, 0.95)');
@@ -1203,6 +1288,7 @@
             const mapDropdownMenu = document.getElementById('mapDropdownMenu');
             const selectedMapName = document.getElementById('selectedMapName');
             const selectedMapPath = document.getElementById('selectedMapPath');
+            const selectedMapCurrent = document.getElementById('selectedMapCurrent');
             const mapInput = document.getElementById('Map');
             const currentValue = mapInput.value;
             
@@ -1252,13 +1338,17 @@
             mapDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
                 if (item.getAttribute('data-value') === currentValue) {
                     const name = item.querySelector('span').textContent;
-                    selectedMapName.textContent = name;
+                    selectedMapName.textContent = 'Select a map';
+                    selectedMapCurrent.textContent = name;
+                    selectedMapCurrent.style.display = '';
                     selectedMapPath.textContent = currentValue;
                     found = true;
                 }
             });
             if (!found) {
                 selectedMapName.textContent = 'Select a map';
+                selectedMapCurrent.textContent = '';
+                selectedMapCurrent.style.display = 'none';
                 selectedMapPath.textContent = '';
             }
         }
@@ -1659,6 +1749,137 @@
             loadServerLog();
             loadContainerLog();
         });
+
+        // --- Mod Management ---
+        async function loadModList() {
+            const modList = document.getElementById('modList');
+            const spinner = document.getElementById('modListSpinner');
+            modList.innerHTML = '';
+            spinner.style.display = 'block';
+            try {
+                const response = await fetch('/api/mods', { headers: { 'Authorization': getAuthHeader() } });
+                const result = await response.json();
+                spinner.style.display = 'none';
+                if (result.success) {
+                    if (result.mods.length === 0) {
+                        modList.innerHTML = '<li class="list-group-item text-muted">No mods found</li>';
+                    } else {
+                        result.mods.forEach(mod => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            li.innerHTML = `
+                                <span><i class='fas fa-file-archive me-2'></i>${mod}</span>
+                                <button class='btn btn-outline-danger btn-sm' onclick='deleteMod("${mod}")'>
+                                    <i class='fas fa-trash me-1'></i>Delete
+                                </button>
+                            `;
+                            modList.appendChild(li);
+                        });
+                    }
+                } else {
+                    modList.innerHTML = `<li class='list-group-item text-danger'>${result.message || 'Failed to load mods'}</li>`;
+                }
+            } catch (error) {
+                spinner.style.display = 'none';
+                modList.innerHTML = `<li class='list-group-item text-danger'>Error: ${error.message}</li>`;
+            }
+        }
+
+        async function uploadMod() {
+            const input = document.getElementById('modUploadInput');
+            if (!input.files || input.files.length === 0) {
+                showAlert('Please select a .zip file to upload.', 'warning');
+                return;
+            }
+            const file = input.files[0];
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                showAlert('Only .zip files are allowed.', 'warning');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('mod', file);
+            const btn = document.getElementById('modUploadBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/api/mods', {
+                    method: 'POST',
+                    headers: { 'Authorization': getAuthHeader() },
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    input.value = '';
+                    loadModList();
+                } else {
+                    showAlert(result.message || 'Failed to upload mod', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error uploading mod: ' + error.message, 'danger');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteMod(modName) {
+            if (!confirm(`Are you sure you want to delete "${modName}"?`)) return;
+            try {
+                const response = await fetch(`/api/mods/${encodeURIComponent(modName)}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': getAuthHeader() }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showAlert(result.message, 'success');
+                    loadModList();
+                } else {
+                    showAlert(result.message || 'Failed to delete mod', 'danger');
+                }
+            } catch (error) {
+                showAlert('Error deleting mod: ' + error.message, 'danger');
+            }
+        }
+
+        function getAuthHeader() {
+            // Use HTTP Basic Auth from the current session (prompt if not set)
+            // This is a placeholder; in production, use a secure method
+            const username = localStorage.getItem('beammpAdminUser') || prompt('Admin username:');
+            const password = localStorage.getItem('beammpAdminPass') || prompt('Admin password:');
+            localStorage.setItem('beammpAdminUser', username);
+            localStorage.setItem('beammpAdminPass', password);
+            return 'Basic ' + btoa(username + ':' + password);
+        }
+
+        // Attach event listeners
+        document.getElementById('modUploadBtn').addEventListener('click', uploadMod);
+        document.getElementById('mods-tab')?.addEventListener('click', loadModList);
+        // Also load mods on page load
+        document.addEventListener('DOMContentLoaded', loadModList);
+
+        async function updateUserInfo() {
+            try {
+                const response = await fetch('/api/auth-info', { headers: { 'Authorization': getAuthHeader() } });
+                const result = await response.json();
+                const container = document.getElementById('userInfoContainer');
+                if (result.mode === 'NO_AUTH') {
+                    container.style.display = 'none';
+                } else if (result.user) {
+                    // Show avatar and name
+                    const avatar = document.getElementById('userAvatar');
+                    const name = document.getElementById('userName');
+                    avatar.textContent = result.user.charAt(0).toUpperCase();
+                    name.textContent = result.user;
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('userInfoContainer').style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html> 
