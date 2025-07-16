@@ -1,19 +1,24 @@
-# BeamMP Server Configurator
+# 🚗 BeamMP Server Configurator
 
 A modern web-based configuration tool for BeamMP servers with a beautiful UI, automatic backups, and secure Docker integration.
 
----
+## ✨ Features
 
-## Project Structure & Deployment
+- Modern, user-friendly web UI
+- Automatic backups and easy restore
+- Secure Docker integration (no full Docker access required)
+- HTTP Basic Auth for all sensitive endpoints
+- Custom map and mod support
+- Health checks and status endpoints
+
+## 🗂️ Project Structure & Deployment
 
 - **Dockerfile** and **docker-compose.yml** are in the project root.
 - The **.env** file must also be in the project root and contains all required environment variables.
 - All persistent data is stored using bind mounts, with paths set via .env variables.
 - The app config and server config directories are separate and clearly defined.
 
----
-
-## Environment Variables (.env)
+## 🔑 Environment Variables (.env)
 
 Create a `.env` file in your project root with the following content (edit as needed):
 
@@ -25,41 +30,40 @@ BEAMMP_CONTAINER_NAME=beamng-mp
 DOCKER_HOST=http://docker-proxy:2375
 CONFIG_DATA=./config
 BACKUP_DATA=./backup
+SERVER_DATA=./server
 BEAMNGMP_DATA=./beamngmp_data
 ```
 
 - **SECRET_KEY**: Required for Flask session security (set a strong value in production).
 - **ADMIN_USERNAME/ADMIN_PASSWORD**: HTTP Basic Auth credentials for the web UI and API.
 - **BEAMMP_CONTAINER_NAME**: The name of the BeamMP server container (should match the container_name in docker-compose.yml).
-- **DOCKER_HOST**: Must be `http://docker-proxy:2375` (not `tcp://...`).
+- **DOCKER_HOST**: Must be `http://docker-proxy:2375`.
 - **CONFIG_DATA, BACKUP_DATA, BEAMNGMP_DATA**: Host paths for config, backup, and BeamNG-MP data directories.
 
----
-
-## Docker Compose Example
+## 🐳 Docker Compose Example
 
 ```yaml
-version: '3.8'
-
 services:
   beammp-configurator:
-    build: .
+    # image: ghcr.io/v5u2/beammp-server-configurator:latest # To pull the latest image from GitHub Container Registry instead of building locally
+    build: . # To build the image locally
     container_name: beammp-configurator
     ports:
       - "5000:5000"
     volumes:
       - ${CONFIG_DATA}:/config
       - ${BACKUP_DATA}:/backup
-      - ./server:/server
+      - ${SERVER_DATA}:/server
     environment:
       - FLASK_ENV=production
       - CONFIG_DIR=/config
       - BACKUP_DIR=/backup
-      - BEAMMP_CONTAINER_NAME=${BEAMMP_CONTAINER_NAME}
-      - DOCKER_HOST=${DOCKER_HOST}
+      - SERVER_DIR=/server
+      - BEAMMP_CONTAINER_NAME=beamng-mp
+      - DOCKER_HOST=http://docker-proxy:2375  # Use the secure proxy
       - SECRET_KEY=${SECRET_KEY}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/config"]
@@ -84,7 +88,7 @@ services:
       - "30814:30814/udp"
       - "9045:8080/tcp"
     volumes:
-      - ${BEAMNGMP_DATA}:/beamngmp:rw
+      - ${SERVER_DATA}:/beamngmp
     restart: unless-stopped
     networks:
       - beammp-network
@@ -93,10 +97,10 @@ services:
     image: tecnativa/docker-socket-proxy
     container_name: docker-proxy
     environment:
-      - CONTAINERS=1
-      - POST=1
-      - GET=1
-      - LOGS=1
+      - CONTAINERS=1   # Allow access to containers endpoints
+      - POST=1         # Allow POST (for restart)
+      - GET=1          # Allow GET (for status)
+      - LOGS=1         # Allow logs endpoint
       - NETWORKS=0
       - IMAGES=0
       - AUTH=0
@@ -105,7 +109,7 @@ services:
       - VOLUMES=0
       - BUILD=0
       - EVENTS=0
-      - PING=1
+      - PING=1         # Allow ping for healthcheck
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -113,12 +117,10 @@ services:
 
 networks:
   beammp-network:
-    driver: bridge
+    driver: bridge 
 ```
 
----
-
-## Building and Running
+## ⚙️ Building and Running
 
 1. **Build without cache:**
    ```bash
@@ -133,42 +135,19 @@ networks:
    docker compose ps
    ```
 
----
-
-## Security & Features
+## 🛡️ Security
 
 - All sensitive endpoints require HTTP Basic Auth (set credentials in .env).
-- The app uses a Docker proxy (`docker-proxy` service) and does not require the Docker CLI or Python Docker library.
-- The container name is set via `BEAMMP_CONTAINER_NAME` in the environment, not in the UI.
-- The backend provides a `/api/containers` endpoint for debugging container discovery.
-- All persistent data is stored using bind mounts, not Docker volumes.
-- The app config (`/config/app_config.json`) and server config (`/server/ServerConfig.toml`) are separate.
+- The app uses a Docker proxy (`docker-proxy` service) to restrict permissions, allowing only server restarts and log viewing (no full Docker access required).
+- The container name is set via `BEAMMP_CONTAINER_NAME` in the environment, not in the UI. This prevents users from using the app to modify other containers.
 
----
-
-## Troubleshooting
-
-- **.env file not working?**
-  - Ensure `.env` is in the project root (same directory as `docker-compose.yml`).
-  - Run `docker compose config` to see if variables are being substituted.
-  - `DOCKER_HOST` must be `http://docker-proxy:2375` (not `tcp://...`).
-- **Container not found errors?**
-  - Make sure `BEAMMP_CONTAINER_NAME` matches the actual container name (see `docker ps -a`).
-  - Use the `/api/containers` endpoint to debug what containers the app can see.
-- **App config in wrong directory?**
-  - Ensure `CONFIG_DIR` is set to `/config` in your compose file.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
----
-
-## Support
+## 🙋 Support
 
 - For issues and questions, open an issue on the [GitHub repository](https://github.com/V5U2/BeamMP-Server-Configurator).
+
+## 📄 License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## 🚧 TODO Roadmap
 
