@@ -43,8 +43,22 @@ BEAMNGMP_DATA=./beamngmp_data
 Add these for OAuth2 (Authentik, Google, etc.):
 
 ```
-# OAuth2 (for Authentik, Google, etc.)
-AUTH_MODE=OAUTH
+# Authentication Modes
+# AUTH_MODE can be NO_AUTH, BASIC, SAML, or OAUTH
+AUTH_MODE=BASIC  # or SAML, OAUTH, NO_AUTH
+
+# BASIC Auth (session-based, modal login)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=yourpassword
+
+# SAML (for Authentik, Google Workspace, etc.)
+SAML_IDP_METADATA_URL=https://your-idp.example.com/saml/metadata/
+SAML_SP_ENTITY_ID=http://yourdomain.com/saml/metadata
+SAML_SP_ACS_URL=http://yourdomain.com/saml/acs
+SAML_SP_CERT=/config/sp-cert.pem  # optional
+SAML_SP_KEY=/config/sp-key.pem    # optional
+
+# OAuth2 / OIDC (for Authentik, Google, etc.)
 OAUTH_CLIENT_ID=your_client_id
 OAUTH_CLIENT_SECRET=your_client_secret
 OAUTH_AUTHORIZE_URL=https://your-idp.example.com/application/o/authorize/
@@ -53,10 +67,13 @@ OAUTH_USERINFO_URL=https://your-idp.example.com/application/o/userinfo/
 OAUTH_SCOPE=openid email profile
 OAUTH_REDIRECT_URI=http://yourdomain.com/oauth/callback
 OAUTH_PROVIDER=authentik  # or 'google' for Google Workspace
+OIDC_DISCOVERY_URL=https://your-idp.example.com/.well-known/openid-configuration  # optional, enables OIDC discovery
+OIDC_JWKS_URL=https://your-idp.example.com/application/o/jwks/  # optional
 ```
 
-- For Authentik, use the application URLs from your Authentik OAuth2 app.
-- For Google, use the Google OAuth2 endpoints and set the correct client ID/secret.
+- **AUTH_MODE**: Selects authentication mode. Options: `NO_AUTH` (no auth), `BASIC` (session-based modal login), `SAML` (SAML SSO), `OAUTH` (OAuth2/OIDC SSO).
+- For SAML, set the IdP metadata URL and SP entity/ACS URLs. For OIDC, you can use discovery or manual endpoints.
+- All sensitive endpoints require authentication except in `NO_AUTH` mode (not recommended for production).
 
 ## 🐳 Docker Compose Example
 
@@ -155,9 +172,19 @@ networks:
 
 ## 🛡️ Security
 
-- All sensitive endpoints require HTTP Basic Auth (set credentials in .env).
+- All sensitive endpoints require authentication (BASIC, SAML, or OAUTH) except in `NO_AUTH` mode.
+- BASIC auth now uses a session-based modal login (not HTTP Basic popups).
+- SAML and OAuth2/OIDC SSO are supported for enterprise/SSO environments.
 - The app uses a Docker proxy (`docker-proxy` service) to restrict permissions, allowing only server restarts and log viewing (no full Docker access required).
 - The container name is set via `BEAMMP_CONTAINER_NAME` in the environment, not in the UI. This prevents users from using the app to modify other containers.
+
+## 🖥️ UI & User Experience
+
+- Authenticated user is shown in a floating bar with Gravatar (if email) or first letter avatar.
+- Modal login form for BASIC auth; SAML/OAuth trigger SSO redirects.
+- Global `isUserAuthenticated()` JS function and `window.isAuthenticated` variable for easy checks.
+- UI blurs or blocks sensitive actions when not authenticated.
+- Logout button in the user info bar.
 
 ## 🙋 Support
 
@@ -171,8 +198,12 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 
 Here are some planned improvements and features for future releases:
 
-- [ ] Implement better authentication, including SSO and auth header support
-- [ ] Blur elements when not authenticated
-- [ ] Show the authenticated user in the UI
-- [ ] Require authentication to load Docker logs
+- [x] Implement better authentication, including SSO and auth header support
+- [x] Blur elements when not authenticated
+- [x] Show the authenticated user in the UI
+- [x] Require authentication to load Docker logs
 - [ ] Mobile theme enhancements
+- [ ] Add user profile settings (change password, etc.)
+- [ ] Add admin audit log for config changes
+- [ ] Add support for more SSO providers (Azure AD, Okta, etc.)
+- [ ] Add rate limiting and brute-force protection for login
