@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session, make_response
 import toml
 import os
 from datetime import datetime
@@ -350,39 +350,62 @@ def oauth_logout():
     session.pop('oauth_user', None)
     return redirect('/')
 
-# --- Update check_auth for OAUTH ---
+# --- BASIC Auth Session-based Login Endpoint ---
+@app.route('/login', methods=['POST'])
+def login():
+    if AUTH_MODE != 'BASIC':
+        return jsonify({'success': False, 'message': 'Login not allowed in this mode'}), 403
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        session['basic_user'] = username
+        return jsonify({'success': True, 'user': username})
+    return jsonify({'success': False, 'message': 'Invalid username or password'}), 401
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.pop('basic_user', None)
+    session.pop('oauth_user', None)
+    session.pop('saml_user', None)
+    return jsonify({'success': True})
+
+# --- Update check_auth for BASIC to use session ---
 def check_auth(auth_header):
     if AUTH_MODE == 'NO_AUTH':
         return True
     if AUTH_MODE == 'BASIC':
-        if not auth_header or not auth_header.startswith('Basic '):
-            return False
-        try:
-            encoded = auth_header.split(' ', 1)[1]
-            decoded = base64.b64decode(encoded).decode('utf-8')
-            username, password = decoded.split(':', 1)
-            return username == ADMIN_USERNAME and password == ADMIN_PASSWORD
-        except Exception:
-            return False
+        return 'basic_user' in session
     if AUTH_MODE == 'SAML':
         return 'saml_user' in session
     if AUTH_MODE == 'OAUTH':
         return 'oauth_user' in session
     return False
 
-# --- Update requires_auth for OAUTH ---
+# --- Update requires_auth for BASIC session logic ---
 def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        print(f"[AUTH DEBUG] Mode: {AUTH_MODE}, Endpoint: {request.path}")
         if AUTH_MODE == 'NO_AUTH':
+            print("[AUTH DEBUG] NO_AUTH: allowing access")
             return f(*args, **kwargs)
-        auth = request.headers.get('Authorization')
-        if not check_auth(auth):
+        if not check_auth(request.headers.get('Authorization')):
             if AUTH_MODE == 'SAML':
+                print("[AUTH DEBUG] SAML: redirecting to /saml/login")
                 return redirect(url_for('saml_login', next=request.url))
             if AUTH_MODE == 'OAUTH':
+                print("[AUTH DEBUG] OAUTH: redirecting to /oauth/login")
                 return redirect(url_for('oauth_login', next=request.url))
-            return ('Unauthorized', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+            if AUTH_MODE == 'BASIC':
+                print("[AUTH DEBUG] BASIC: returning 401 JSON for login modal")
+                # For API: return JSON, for UI: let frontend show modal
+                if request.accept_mimetypes.accept_json:
+                    return jsonify({'success': False, 'message': 'Login required'}), 401
+                return redirect(url_for('index'))
+            print("[AUTH DEBUG] Fallback: returning generic 401")
+            return ('Unauthorized', 401)
+        print("[AUTH DEBUG] Authenticated: allowing access")
         return f(*args, **kwargs)
     return decorated
 
@@ -414,8 +437,6 @@ def validate_user_config_data(data):
         if k not in allowed_keys:
             return False
     return True
-
-# --- Restrict Docker proxy access at the network level (see docker-compose.yml comment) ---
 
 # --- Apply auth and validation to sensitive endpoints ---
 @app.route('/api/config', methods=['GET'])
@@ -472,6 +493,7 @@ def update_config():
         return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
 
 @app.route('/backups')
+@requires_auth
 def list_backups():
     """Show list of backup files"""
     backups = []
@@ -607,6 +629,7 @@ def api_server_status():
         return jsonify({'success': False, 'message': f'Error getting server status: {str(e)}', 'status': 'error', 'containers_seen': debug_names}), 500
 
 @app.route('/api/server-log', methods=['GET'])
+@requires_auth
 def get_server_log():
     """API endpoint to get the server log"""
     try:
@@ -780,15 +803,8 @@ def get_auth_info():
     mode = AUTH_MODE
     user = None
     if mode == 'BASIC':
-        auth = request.headers.get('Authorization')
-        if auth and auth.startswith('Basic '):
-            try:
-                encoded = auth.split(' ', 1)[1]
-                decoded = base64.b64decode(encoded).decode('utf-8')
-                username, _ = decoded.split(':', 1)
-                user = username
-            except Exception:
-                user = None
+        if 'basic_user' in session:
+            user = session['basic_user']
     elif mode == 'SAML':
         if 'saml_user' in session:
             user = session['saml_user']['attributes'].get('email', ['SAML User'])[0]
