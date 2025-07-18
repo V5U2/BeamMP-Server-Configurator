@@ -121,7 +121,7 @@
             border: none;
         }
         .nav-tabs .nav-link:hover {
-            color: var(--accent-color);
+            color: var(--primary-color);
             background-color: rgba(255, 107, 53, 0.1);
         }
         body.light-mode .nav-tabs .nav-link:hover {
@@ -452,8 +452,37 @@
             font-weight: 600;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/js-md5@0.7.3/src/md5.min.js"></script>
 </head>
 <body>
+    <!-- User Info Bar -->
+    <div id="userInfoContainer" style="display:none; position:fixed; top:18px; right:24px; z-index:1050; background:var(--bg-card); border-radius:2em; box-shadow:0 2px 8px rgba(0,0,0,0.08); padding:0.4em 1.2em 0.4em 0.8em; display:flex; align-items:center; gap:0.7em; min-width:160px;">
+        <span id="userAvatar" style="background:var(--accent-color); color:white; border-radius:50%; width:2.2em; height:2.2em; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:1.2em; overflow:hidden;"></span>
+        <span id="userName" style="font-weight:500; color:var(--text-primary);"></span>
+        <button id="logoutBtn" class="btn btn-outline-danger btn-sm ms-2" style="display:none;"><i class="fas fa-sign-out-alt me-1"></i>Logout</button>
+    </div>
+
+    <!-- Auth Required Modal (SSO/SAML/OAUTH) -->
+    <div class="modal fade" id="authRequiredModal" tabindex="-1" aria-labelledby="authRequiredModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="authRequiredModalLabel"><i class="fas fa-lock me-2"></i>Authentication Required</h5>
+          </div>
+          <div class="modal-body">
+            <p id="authModalMessage">You must be authenticated to use this application.</p>
+            <div id="basicAuthForm" style="display:none;">
+              <input type="text" id="basicAuthUsername" class="form-control mb-2" placeholder="Username" autocomplete="username">
+              <input type="password" id="basicAuthPassword" class="form-control mb-2" placeholder="Password" autocomplete="current-password">
+              <div id="basicAuthError" class="text-danger mb-2" style="display:none;"></div>
+              <button id="basicAuthLoginBtn" class="btn btn-primary w-100 mt-2"><i class="fas fa-sign-in-alt me-2"></i>Sign In</button>
+            </div>
+            <button id="authModalLoginBtn" class="btn btn-primary w-100 mt-2"><i class="fas fa-sign-in-alt me-2"></i>Authenticate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="container-fluid">
         <div class="row justify-content-center">
             <div class="col-lg-10 col-xl-8">
@@ -1540,8 +1569,8 @@
                 `;
             }
             alertContainer.innerHTML = alertHtml;
-            // Only auto-dismiss if not SAML error
-            if (!message || !message.toLowerCase().includes('saml')) {
+            // Only auto-dismiss if not SAML error and not danger
+            if (!message || (!message.toLowerCase().includes('saml') && type !== 'danger')) {
                 setTimeout(() => {
                     const alert = document.getElementById(alertId);
                     if (alert) {
@@ -1731,6 +1760,11 @@
         async function loadServerLog() {
             const logPre = document.getElementById('serverLog');
             logPre.textContent = 'Loading...';
+            if (typeof isUserAuthenticated === 'function' && !isUserAuthenticated()) {
+                showAlert('You must be authenticated to view the server log.', 'danger');
+                logPre.textContent = '';
+                return;
+            }
             try {
                 const response = await fetch('/api/server-log');
                 const result = await response.json();
@@ -1739,7 +1773,6 @@
                 } else {
                     // Create a more user-friendly error message
                     let errorMessage = result.message || 'Failed to load log';
-                    
                     // Style the error message
                     logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Log File Error</div><div style="color: #cccccc; line-height: 1.5;">${errorMessage}</div><div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;"><strong>Tips:</strong><ul style="margin: 5px 0 0 20px; padding: 0;"><li>Check the log filename in App Settings</li><li>Ensure the server has been running to generate logs</li><li>Verify file permissions if the file exists</li></ul></div>`;
                 }
@@ -1885,25 +1918,121 @@
 
         async function updateUserInfo() {
             try {
-                const response = await fetch('/api/auth-info', { headers: { 'Authorization': getAuthHeader() } });
+                const response = await fetch('/api/auth-info');
                 const result = await response.json();
+                window.isAuthenticated = !!result.user;
+                window.authMode = result.mode;
                 const container = document.getElementById('userInfoContainer');
+                const logoutBtn = document.getElementById('logoutBtn');
                 if (result.mode === 'NO_AUTH') {
                     container.style.display = 'none';
                 } else if (result.user) {
                     // Show avatar and name
                     const avatar = document.getElementById('userAvatar');
                     const name = document.getElementById('userName');
-                    avatar.textContent = result.user.charAt(0).toUpperCase();
                     name.textContent = result.user;
-                    container.style.display = 'block';
+                    // Try to use Gravatar if user looks like an email
+                    if (result.user && result.user.includes('@')) {
+                        const email = result.user.trim().toLowerCase();
+                        const hash = md5(email);
+                        console.log('Gravatar MD5 input: "' + email + '" hash:', hash);
+                        const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?s=64&d=404`;
+                        // Try to load gravatar, fallback to letter if not found
+                        const img = new Image();
+                        img.src = gravatarUrl;
+                        img.onload = function() {
+                            avatar.innerHTML = `<img src='${gravatarUrl}' alt='avatar' style='width:2.2em;height:2.2em;border-radius:50%;object-fit:cover;'>`;
+                        };
+                        img.onerror = function() {
+                            avatar.textContent = email.charAt(0).toUpperCase();
+                        };
+                    } else {
+                        avatar.textContent = result.user.charAt(0).toUpperCase();
+                    }
+                    container.style.display = 'flex';
+                    logoutBtn.style.display = '';
                 } else {
                     container.style.display = 'none';
+                    logoutBtn.style.display = 'none';
+                }
+                // Show modal if not authenticated
+                if (!window.isAuthenticated) {
+                    const modal = new bootstrap.Modal(document.getElementById('authRequiredModal'));
+                    if (result.mode === 'BASIC') {
+                        document.getElementById('authModalMessage').textContent = 'Please sign in to continue.';
+                        document.getElementById('basicAuthForm').style.display = '';
+                        document.getElementById('authModalLoginBtn').style.display = 'none';
+                    } else {
+                        document.getElementById('authModalMessage').textContent = 'You must be authenticated to use this application.';
+                        document.getElementById('basicAuthForm').style.display = 'none';
+                        document.getElementById('authModalLoginBtn').style.display = '';
+                    }
+                    modal.show();
                 }
             } catch (error) {
+                window.isAuthenticated = false;
                 document.getElementById('userInfoContainer').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'none';
+                const modal = new bootstrap.Modal(document.getElementById('authRequiredModal'));
+                modal.show();
             }
         }
+
+        // Expose a global function to check authentication
+        function isUserAuthenticated() {
+            return !!window.isAuthenticated;
+        }
+
+        // Handle auth modal login button and BASIC login
+        document.addEventListener('DOMContentLoaded', function() {
+            const authBtn = document.getElementById('authModalLoginBtn');
+            if (authBtn) {
+                authBtn.addEventListener('click', function() {
+                    fetch('/api/auth-info').then(r => r.json()).then(info => {
+                        if (info.mode === 'OAUTH') {
+                            window.location.href = '/oauth/login';
+                        } else if (info.mode === 'SAML') {
+                            window.location.href = '/saml/login';
+                        } else if (info.mode === 'BASIC') {
+                            // Show BASIC login form
+                            document.getElementById('authModalMessage').textContent = 'Please sign in to continue.';
+                            document.getElementById('basicAuthForm').style.display = '';
+                            authBtn.style.display = 'none';
+                        } else {
+                            window.location.reload();
+                        }
+                    });
+                });
+            }
+            // BASIC login form handler
+            const basicLoginBtn = document.getElementById('basicAuthLoginBtn');
+            if (basicLoginBtn) {
+                basicLoginBtn.addEventListener('click', async function() {
+                    const username = document.getElementById('basicAuthUsername').value;
+                    const password = document.getElementById('basicAuthPassword').value;
+                    const errorDiv = document.getElementById('basicAuthError');
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                    try {
+                        const resp = await fetch('/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        const result = await resp.json();
+                        if (result.success) {
+                            window.location.reload();
+                        } else {
+                            errorDiv.textContent = result.message || 'Login failed';
+                            errorDiv.style.display = '';
+                        }
+                    } catch (e) {
+                        errorDiv.textContent = 'Login error';
+                        errorDiv.style.display = '';
+                    }
+                });
+            }
+        });
 
         // --- Theme Dropdown ---
         function updateThemeDropdown() {
@@ -1922,6 +2051,21 @@
         });
         // Call on load
         updateThemeDropdown();
+
+        // Handle logout button
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async function() {
+                    try {
+                        await fetch('/logout', { method: 'POST' });
+                        window.location.reload();
+                    } catch (e) {
+                        showAlert('Logout failed', 'danger');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html> 

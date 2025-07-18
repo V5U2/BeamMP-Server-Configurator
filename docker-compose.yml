@@ -10,26 +10,31 @@ services:
       - ${BACKUP_DATA}:/backup
       - ${SERVER_DATA}:/server
     environment:
-      - FLASK_ENV=production
-      - CONFIG_DIR=/config
-      - BACKUP_DIR=/backup
-      - SERVER_DIR=/server
-      - BEAMMP_CONTAINER_NAME=beamng-mp
-      - DOCKER_HOST=http://docker-proxy:2375  # Use the secure proxy
-      - SECRET_KEY=${SECRET_KEY}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - CONFIG_DIR=${CONFIG_DIR:-/config}
+      - BACKUP_DIR=${BACKUP_DIR:-/backup}
+      - SERVER_DIR=${SERVER_DIR:-/server}
+      - BEAMMP_CONTAINER_NAME=${BEAMMP_CONTAINER_NAME:-beamng-mp}
+      - DOCKER_HOST=${DOCKER_HOST:-http://docker-proxy:2375}
+      - SECRET_KEY=${SECRET_KEY:-changeme}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - AUTH_MODE=${AUTH_MODE:-BASIC}
-      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
-      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
-      - OAUTH_AUTHORIZE_URL=${OAUTH_AUTHORIZE_URL}
-      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL}
-      - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL}
-      - OAUTH_SCOPE=${OAUTH_SCOPE}
-      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI}
-      - OAUTH_PROVIDER=${OAUTH_PROVIDER}
-      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL}
-      - OIDC_JWKS_URL=${OIDC_JWKS_URL}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:-}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:-}
+      - OAUTH_AUTHORIZE_URL=${OAUTH_AUTHORIZE_URL:-}
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL:-}
+      - OAUTH_USERINFO_URL=${OAUTH_USERINFO_URL:-}
+      - OAUTH_SCOPE=${OAUTH_SCOPE:-openid email profile}
+      - OAUTH_REDIRECT_URI=${OAUTH_REDIRECT_URI:-http://localhost:5000/oauth/callback}
+      - OAUTH_PROVIDER=${OAUTH_PROVIDER:-authentik}
+      - OIDC_DISCOVERY_URL=${OIDC_DISCOVERY_URL:-}
+      - OIDC_JWKS_URL=${OIDC_JWKS_URL:-}
+      - SAML_IDP_METADATA_URL=${SAML_IDP_METADATA_URL:-}
+      - SAML_SP_ENTITY_ID=${SAML_SP_ENTITY_ID:-http://localhost:5000/saml/metadata}
+      - SAML_SP_ACS_URL=${SAML_SP_ACS_URL:-http://localhost:5000/saml/acs}
+      - SAML_SP_CERT=${SAML_SP_CERT:-}
+      - SAML_SP_KEY=${SAML_SP_KEY:-}
     restart: unless-stopped
     networks:
       - beammp-network
