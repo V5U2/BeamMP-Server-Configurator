@@ -272,55 +272,36 @@ OAUTH_PROVIDER = os.environ.get('OAUTH_PROVIDER', 'authentik')
 OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL')
 OIDC_JWKS_URL = os.environ.get('OIDC_JWKS_URL')
 
-# Check required OAuth2 variables
 if AUTH_MODE == 'OAUTH':
-    missing = []
-    if not OAUTH_CLIENT_ID:
-        missing.append('OAUTH_CLIENT_ID')
-    if not OAUTH_CLIENT_SECRET:
-        missing.append('OAUTH_CLIENT_SECRET')
-    if not OAUTH_REDIRECT_URI:
-        missing.append('OAUTH_REDIRECT_URI')
-    # Only require manual endpoints if discovery is not used
-    if not OIDC_DISCOVERY_URL:
-        if not OAUTH_AUTHORIZE_URL:
-            missing.append('OAUTH_AUTHORIZE_URL')
-        if not OAUTH_TOKEN_URL:
-            missing.append('OAUTH_TOKEN_URL')
-        if not OAUTH_USERINFO_URL:
-            missing.append('OAUTH_USERINFO_URL')
-    if missing:
-        raise RuntimeError(f"Missing required OAuth2 environment variables: {', '.join(missing)}")
+    oauth = OAuth(app)
 
-oauth = OAuth(app)
-
-# Register OAuth client with OIDC discovery if available, else manual config
-if OIDC_DISCOVERY_URL:
-    oauth.register(
-        name='main',
-        server_metadata_url=OIDC_DISCOVERY_URL,
-        client_id=OAUTH_CLIENT_ID,
-        client_secret=OAUTH_CLIENT_SECRET,
-        client_kwargs={'scope': OAUTH_SCOPE},
-    )
-elif OAUTH_AUTHORIZE_URL and OAUTH_TOKEN_URL and OAUTH_USERINFO_URL:
-    extra_args = {}
-    if OIDC_JWKS_URL:
-        extra_args['jwks_uri'] = OIDC_JWKS_URL
-    oauth.register(
-        name='main',
-        client_id=OAUTH_CLIENT_ID,
-        client_secret=OAUTH_CLIENT_SECRET,
-        access_token_url=OAUTH_TOKEN_URL,
-        access_token_params=None,
-        authorize_url=OAUTH_AUTHORIZE_URL,
-        authorize_params=None,
-        api_base_url=OAUTH_USERINFO_URL.rsplit('/', 1)[0]+'/',
-        client_kwargs={'scope': OAUTH_SCOPE},
-        **extra_args
-    )
-else:
-    raise RuntimeError('No valid OIDC discovery URL or manual OAuth endpoints provided.')
+    # Register OAuth client with OIDC discovery if available, else manual config
+    if OIDC_DISCOVERY_URL:
+        oauth.register(
+            name='main',
+            server_metadata_url=OIDC_DISCOVERY_URL,
+            client_id=OAUTH_CLIENT_ID,
+            client_secret=OAUTH_CLIENT_SECRET,
+            client_kwargs={'scope': OAUTH_SCOPE},
+        )
+    elif OAUTH_AUTHORIZE_URL and OAUTH_TOKEN_URL and OAUTH_USERINFO_URL:
+        extra_args = {}
+        if OIDC_JWKS_URL:
+            extra_args['jwks_uri'] = OIDC_JWKS_URL
+        oauth.register(
+            name='main',
+            client_id=OAUTH_CLIENT_ID,
+            client_secret=OAUTH_CLIENT_SECRET,
+            access_token_url=OAUTH_TOKEN_URL,
+            access_token_params=None,
+            authorize_url=OAUTH_AUTHORIZE_URL,
+            authorize_params=None,
+            api_base_url=OAUTH_USERINFO_URL.rsplit('/', 1)[0]+'/',
+            client_kwargs={'scope': OAUTH_SCOPE},
+            **extra_args
+        )
+    else:
+        raise RuntimeError('No valid OIDC discovery URL or manual OAuth endpoints provided.')
 
 @app.route('/oauth/login')
 def oauth_login():
@@ -430,7 +411,7 @@ def validate_config_data(data):
 
 def validate_user_config_data(data):
     # Only allow dict with known keys
-    allowed_keys = {'theme', 'customMaps', 'customTags', 'backupRetention', 'serverLogFilename'}
+    allowed_keys = {'theme', 'customMaps', 'customTags', 'backupRetention', 'serverLogFilename', 'logAutoRefresh'}
     if not isinstance(data, dict):
         return False
     for k in data:
@@ -543,15 +524,9 @@ def delete_backup(filename):
         flash('Backup file not found!', 'error')
     return redirect(url_for('list_backups'))
 
-@app.route('/health')
-def health_check():
-    """Health check endpoint for container orchestration"""
-    try:
-        # Try to load config to ensure the app is working
-        load_config()
-        return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
-    except Exception as e:
-        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+# Remove the /health endpoint and its function
+def remove_health_check():
+    pass
 
 @app.route('/api/containers', methods=['GET'])
 @requires_auth

@@ -133,7 +133,8 @@
     "autoSave": true,
     "backupRetention": 30,
     "customMaps": [],
-    "customTags": []
+    "customTags": [],
+    "logAutoRefresh": 5
   },
   "serverDefaults": {
     "General": {

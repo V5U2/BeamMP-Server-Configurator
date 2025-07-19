@@ -769,20 +769,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- Server Log -->
-                                    <div class="row mt-3">
-                                        <div class="col-md-12">
-                                            <div class="server-info-box">
-                                                <div class="d-flex justify-content-between align-items-center server-info-heading">
-                                                    <span><i class="fas fa-file-alt me-2"></i>Server Log</span>
-                                                    <button type="button" class="btn btn-info btn-lg" style="min-width: 160px;" onclick="loadServerLog()">
-                                                        <i class="fas fa-sync-alt me-2"></i>Reload Server Log
-                                                    </button>
-                                                </div>
-                                                <pre id="serverLog" class="log-output custom-scroll p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <!-- Container Log -->
                                     <div class="row mt-3">
                                         <div class="col-md-12">
@@ -797,6 +783,21 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Server Log -->
+                                    <div class="row mt-3">
+                                        <div class="col-md-12">
+                                            <div class="server-info-box">
+                                                <div class="d-flex justify-content-between align-items-center server-info-heading">
+                                                    <span><i class="fas fa-file-alt me-2"></i>Server Log</span>
+                                                    <button type="button" class="btn btn-info btn-lg" style="min-width: 160px;" onclick="loadServerLog()">
+                                                        <i class="fas fa-sync-alt me-2"></i>Reload Server Log
+                                                    </button>
+                                                </div>
+                                                <pre id="serverLog" class="log-output custom-scroll p-3 rounded" style="max-height: 300px; overflow-y: auto;">Loading...</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -857,6 +858,12 @@
                                                 <input type="text" class="form-control" id="serverLogFilename" placeholder="Server.log">
                                                 <div class="field-description">Name of the server log file to read (relative to config directory)</div>
                                             </div>
+                                            <!-- Log Auto-Refresh Interval -->
+                                            <div class="field-group mb-4">
+                                                <label class="field-label">Log Auto-Refresh Interval (seconds)</label>
+                                                <input type="number" class="form-control" id="logAutoRefresh" min="0" max="3600" step="1" placeholder="5">
+                                                <div class="field-description">How often to auto-refresh the log views. Set to 0 to disable auto-refresh.</div>
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
                                             <!-- Custom Maps -->
@@ -884,13 +891,17 @@
                                     <hr>
 
                                     <div class="row">
-                                        <div class="col-12">
-                                            <div class="text-center">
-                                                <button type="button" class="btn btn-outline-danger" onclick="resetAppSettings()">
-                                                    <i class="fas fa-undo me-2"></i>Reset All Settings
-                                                </button>
-                                            </div>
+                                        <div class="col-12 text-center">
+                                            <button type="button" class="btn btn-outline-danger me-2" onclick="resetAppSettings()">
+                                                <i class="fas fa-undo me-2"></i>Reset All Settings
+                                            </button>
+                                            <button type="button" class="btn btn-success" id="saveAppSettingsBtn" onclick="onSaveAppSettings()">
+                                                <i class="fas fa-save me-2"></i>Save App Settings
+                                            </button>
                                         </div>
+                                    </div>
+                                    <div class="row mt-4">
+                                        <!-- Remove the card with id="currentAppSettingsDisplay" -->
                                     </div>
                                 </div>
                             </div>
@@ -898,11 +909,11 @@
                     </div>
 
                     <div class="text-center mt-4">
-                        <button type="button" class="btn btn-primary btn-lg" onclick="saveConfig()">
-                            <i class="fas fa-save me-2"></i>Save Configuration
-                        </button>
                         <button type="button" class="btn btn-outline-secondary btn-lg ms-2" onclick="loadCurrentConfig()">
                             <i class="fas fa-refresh me-2"></i>Reload
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg ms-2" onclick="saveConfig()">
+                            <i class="fas fa-save me-2"></i>Save Configuration
                         </button>
                     </div>
                 </div>
@@ -1193,6 +1204,7 @@
             serverLogFilename: 'Server.log'
         };
         let appConfig = {};
+        let logAutoRefreshTimer = null;
 
         async function loadAppConfig() {
             try {
@@ -1248,27 +1260,59 @@
             } catch (error) {
                 // Use defaults if error
             }
-            // Apply settings to UI
-            document.getElementById('themeSelect').value = userConfig.theme || 'dark';
-            document.getElementById('backupRetention').value = userConfig.backupRetention || 10;
-            document.getElementById('serverLogFilename').value = userConfig.serverLogFilename || 'Server.log';
-            document.getElementById('customMaps').value = (userConfig.customMaps || []).join('\n');
-            document.getElementById('customTags').value = (userConfig.customTags || []).join('\n');
-            // Ensure theme is applied on page load
-            applyTheme(userConfig.theme || 'dark');
+            // Apply settings to UI with null checks
+            const theme = userConfig.theme || 'dark';
+            const themeDropdownMenu = document.getElementById('themeDropdownMenu');
+            if (themeDropdownMenu) {
+                themeDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
+                    if (item.getAttribute('data-value') === theme) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+            const selectedThemeName = document.getElementById('selectedThemeName');
+            if (selectedThemeName) selectedThemeName.textContent = theme === 'light' ? 'Light Theme' : 'Dark Theme';
+            userConfig.theme = theme;
+            applyTheme(theme);
+            const themeSelect = document.getElementById('themeSelect');
+            if (themeSelect) themeSelect.value = theme;
+            const backupRetention = document.getElementById('backupRetention');
+            if (backupRetention) backupRetention.value = userConfig.backupRetention || 10;
+            const serverLogFilename = document.getElementById('serverLogFilename');
+            if (serverLogFilename) serverLogFilename.value = userConfig.serverLogFilename || 'Server.log';
+            const customMaps = document.getElementById('customMaps');
+            if (customMaps) customMaps.value = (userConfig.customMaps || []).join('\n');
+            const customTags = document.getElementById('customTags');
+            if (customTags) customTags.value = (userConfig.customTags || []).join('\n');
+            const logAutoRefresh = document.getElementById('logAutoRefresh');
+            if (logAutoRefresh) logAutoRefresh.value = userConfig.logAutoRefresh !== undefined ? userConfig.logAutoRefresh : 5;
+            if (typeof updateCurrentAppSettingsDisplay === 'function') updateCurrentAppSettingsDisplay();
         }
 
         async function saveUserConfig() {
-            userConfig.theme = document.getElementById('themeSelect').value;
+            // Get theme from dropdown
+            let selectedTheme = userConfig.theme;
+            if (themeDropdownMenu) {
+                const activeItem = themeDropdownMenu.querySelector('a.dropdown-item.active');
+                if (activeItem) selectedTheme = activeItem.getAttribute('data-value');
+            }
+            userConfig.theme = selectedTheme;
+            applyTheme(selectedTheme);
+            const themeSelect = document.getElementById('themeSelect');
+            if (themeSelect) themeSelect.value = selectedTheme;
             userConfig.backupRetention = parseInt(document.getElementById('backupRetention').value) || 10;
             userConfig.serverLogFilename = document.getElementById('serverLogFilename').value || 'Server.log';
             userConfig.customMaps = document.getElementById('customMaps').value.split('\n').filter(line => line.trim() !== '');
             userConfig.customTags = document.getElementById('customTags').value.split('\n').filter(line => line.trim() !== '');
+            userConfig.logAutoRefresh = parseInt(document.getElementById('logAutoRefresh').value) || 0;
             await fetch('/api/user-config', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userConfig)
             });
+            updateThemeDropdown();
         }
 
         function changeTheme() {
@@ -1770,6 +1814,8 @@
                 const result = await response.json();
                 if (result.success) {
                     logPre.textContent = result.log || 'Log file is empty';
+                    // Auto-scroll to bottom
+                    logPre.scrollTop = logPre.scrollHeight;
                 } else {
                     // Create a more user-friendly error message
                     let errorMessage = result.message || 'Failed to load log';
@@ -1789,6 +1835,8 @@
                 const result = await response.json();
                 if (result.success) {
                     logPre.textContent = result.log || 'Container log is empty';
+                    // Auto-scroll to bottom
+                    logPre.scrollTop = logPre.scrollHeight;
                 } else {
                     // Create a more user-friendly error message
                     let errorMessage = result.message || 'Failed to load container log';
@@ -2037,18 +2085,35 @@
         // --- Theme Dropdown ---
         function updateThemeDropdown() {
             const selectedThemeName = document.getElementById('selectedThemeName');
-            selectedThemeName.textContent = userConfig.theme === 'light' ? 'Light Theme' : 'Dark Theme';
+            if (selectedThemeName) selectedThemeName.textContent = userConfig.theme === 'light' ? 'Light Theme' : 'Dark Theme';
+            if (themeDropdownMenu) {
+                themeDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
+                    if (item.getAttribute('data-value') === userConfig.theme) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
         }
-        document.getElementById('themeDropdownMenu').querySelectorAll('a.dropdown-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const value = this.getAttribute('data-value');
-                userConfig.theme = value;
-                applyTheme(value);
-                updateThemeDropdown();
-                saveUserConfig();
+        const themeDropdownMenu = document.getElementById('themeDropdownMenu');
+        if (themeDropdownMenu) {
+            themeDropdownMenu.querySelectorAll('a.dropdown-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const value = this.getAttribute('data-value');
+                    userConfig.theme = value;
+                    applyTheme(value);
+                    // Set .active class
+                    themeDropdownMenu.querySelectorAll('a.dropdown-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    // Update label
+                    const selectedThemeName = document.getElementById('selectedThemeName');
+                    if (selectedThemeName) selectedThemeName.textContent = value === 'light' ? 'Light Theme' : 'Dark Theme';
+                    saveUserConfig();
+                });
             });
-        });
+        }
         // Call on load
         updateThemeDropdown();
 
@@ -2066,6 +2131,75 @@
                 });
             }
         });
+
+        function setupLogAutoRefresh() {
+            clearLogAutoRefresh();
+            const interval = parseInt(userConfig.logAutoRefresh);
+            if (interval && interval > 0) {
+                logAutoRefreshTimer = setInterval(() => {
+                    if (document.getElementById('server').classList.contains('active')) {
+                        loadServerLog();
+                        loadContainerLog();
+                    }
+                }, interval * 1000);
+            }
+        }
+
+        function clearLogAutoRefresh() {
+            if (logAutoRefreshTimer) {
+                clearInterval(logAutoRefreshTimer);
+                logAutoRefreshTimer = null;
+            }
+        }
+
+        // Update auto-refresh when settings are changed
+        const logAutoRefreshInput = document.getElementById('logAutoRefresh');
+        if (logAutoRefreshInput) {
+            logAutoRefreshInput.addEventListener('change', function() {
+                userConfig.logAutoRefresh = parseInt(this.value) || 0;
+                saveUserConfig();
+                setupLogAutoRefresh();
+            });
+        }
+
+        // Start/stop auto-refresh on tab switch
+        const serverTab = document.getElementById('server-tab');
+        if (serverTab) {
+            serverTab.addEventListener('click', function() {
+                loadServerLog();
+                loadContainerLog();
+                setupLogAutoRefresh();
+            });
+        }
+
+        // Stop auto-refresh when leaving the server tab
+        const configTabs = document.getElementById('configTabs');
+        if (configTabs) {
+            configTabs.addEventListener('click', function(event) {
+                if (event.target && event.target.id !== 'server-tab') {
+                    clearLogAutoRefresh();
+                }
+            });
+        }
+
+        // Also set up auto-refresh on initial load if server tab is active
+        if (document.getElementById('server').classList.contains('active')) {
+            setupLogAutoRefresh();
+        }
+
+        async function onSaveAppSettings() {
+            await saveUserConfig();
+            showAlert('App settings saved successfully!', 'success');
+            if (typeof updateCurrentAppSettingsDisplay === 'function') updateCurrentAppSettingsDisplay();
+        }
+
+        function updateCurrentAppSettingsDisplay() {
+            // Show a pretty-printed version of the current userConfig
+            const pre = document.getElementById('currentAppSettingsPre');
+            if (pre) {
+                pre.textContent = JSON.stringify(userConfig, null, 2);
+            }
+        }
     </script>
 </body>
 </html> 
