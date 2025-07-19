@@ -380,12 +380,20 @@ def requires_auth(f):
                 return redirect(url_for('oauth_login', next=request.url))
             if AUTH_MODE == 'BASIC':
                 print("[AUTH DEBUG] BASIC: returning 401 JSON for login modal")
-                # For API: return JSON, for UI: let frontend show modal
+                # Always return JSON for API, redirect for UI
                 if request.accept_mimetypes.accept_json:
-                    return jsonify({'success': False, 'message': 'Login required'}), 401
+                    resp = jsonify({'success': False, 'message': 'Login required'})
+                    resp.status_code = 401
+                    # Remove any WWW-Authenticate header
+                    resp.headers.pop('WWW-Authenticate', None)
+                    return resp
                 return redirect(url_for('index'))
             print("[AUTH DEBUG] Fallback: returning generic 401")
-            return ('Unauthorized', 401)
+            # For any other mode, return JSON and remove WWW-Authenticate
+            resp = jsonify({'success': False, 'message': 'Unauthorized'})
+            resp.status_code = 401
+            resp.headers.pop('WWW-Authenticate', None)
+            return resp
         print("[AUTH DEBUG] Authenticated: allowing access")
         return f(*args, **kwargs)
     return decorated

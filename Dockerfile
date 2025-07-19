@@ -17,6 +17,7 @@ COPY app/requirements.txt /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install gunicorn
 
 # Copy application code and templates
 COPY app/ /app/
@@ -27,5 +28,9 @@ RUN mkdir -p /server /backup /config
 # Expose port
 EXPOSE 5000
 
+# Copy gunicorn-entrypoint.sh
+COPY gunicorn-entrypoint.sh /app/
+RUN chmod +x /app/gunicorn-entrypoint.sh
+
 # Run the application
-CMD ["python", "app.py"] 
+CMD ["/app/gunicorn-entrypoint.sh"] 

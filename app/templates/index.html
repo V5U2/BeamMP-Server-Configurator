@@ -1862,7 +1862,7 @@
             modList.innerHTML = '';
             spinner.style.display = 'block';
             try {
-                const response = await fetch('/api/mods', { headers: { 'Authorization': getAuthHeader() } });
+                const response = await fetch('/api/mods');
                 const result = await response.json();
                 spinner.style.display = 'none';
                 if (result.success) {
@@ -1910,7 +1910,6 @@
             try {
                 const response = await fetch('/api/mods', {
                     method: 'POST',
-                    headers: { 'Authorization': getAuthHeader() },
                     body: formData
                 });
                 const result = await response.json();
@@ -1933,8 +1932,7 @@
             if (!confirm(`Are you sure you want to delete "${modName}"?`)) return;
             try {
                 const response = await fetch(`/api/mods/${encodeURIComponent(modName)}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': getAuthHeader() }
+                    method: 'DELETE'
                 });
                 const result = await response.json();
                 if (result.success) {
@@ -1947,22 +1945,6 @@
                 showAlert('Error deleting mod: ' + error.message, 'danger');
             }
         }
-
-        function getAuthHeader() {
-            // Use HTTP Basic Auth from the current session (prompt if not set)
-            // This is a placeholder; in production, use a secure method
-            const username = localStorage.getItem('beammpAdminUser') || prompt('Admin username:');
-            const password = localStorage.getItem('beammpAdminPass') || prompt('Admin password:');
-            localStorage.setItem('beammpAdminUser', username);
-            localStorage.setItem('beammpAdminPass', password);
-            return 'Basic ' + btoa(username + ':' + password);
-        }
-
-        // Attach event listeners
-        document.getElementById('modUploadBtn').addEventListener('click', uploadMod);
-        document.getElementById('mods-tab')?.addEventListener('click', loadModList);
-        // Also load mods on page load
-        document.addEventListener('DOMContentLoaded', loadModList);
 
         async function updateUserInfo() {
             try {
