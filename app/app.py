@@ -780,6 +780,21 @@ def delete_mod(modname):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/api/mods/<modname>/download', methods=['GET'])
+@requires_auth
+def download_mod(modname):
+    """Download a zip file from the mods directory"""
+    if not modname.lower().endswith('.zip'):
+        return jsonify({'success': False, 'message': 'Only .zip files can be downloaded'}), 400
+    filename = werkzeug.utils.secure_filename(modname)
+    file_path = os.path.join(MODS_DIR, filename)
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'message': 'File not found'}), 404
+    try:
+        return send_file(file_path, as_attachment=True)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # --- Update /api/auth-info for OAUTH ---
 @app.route('/api/auth-info', methods=['GET'])
 def get_auth_info():

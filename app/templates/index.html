@@ -1655,6 +1655,7 @@
                 currentConfig = await response.json();
                 populateForm(currentConfig);
             } catch (error) {
+                if (window.isAuthenticated === false) return;
                 showAlert('Error loading configuration: ' + error.message, 'danger');
             }
         }
@@ -1877,6 +1878,7 @@
                                 <button class='btn btn-outline-danger btn-sm' onclick='deleteMod("${mod}")'>
                                     <i class='fas fa-trash me-1'></i>Delete
                                 </button>
+                                <button class='btn btn-outline-primary btn-sm me-2' onclick='downloadMod("${mod}")'><i class='fas fa-download me-1'></i>Download</button>
                             `;
                             modList.appendChild(li);
                         });
@@ -1892,6 +1894,8 @@
 
         async function uploadMod() {
             const input = document.getElementById('modUploadInput');
+            const progressContainer = document.getElementById('modUploadProgressContainer');
+            const progressBar = document.getElementById('modUploadProgressBar');
             if (!input.files || input.files.length === 0) {
                 showAlert('Please select a .zip file to upload.', 'warning');
                 return;
@@ -1907,24 +1911,58 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
             btn.disabled = true;
+            // Show and reset progress bar
+            if (progressContainer && progressBar) {
+                progressContainer.style.display = '';
+                progressBar.style.width = '0%';
+                progressBar.setAttribute('aria-valuenow', '0');
+                progressBar.textContent = '0%';
+            }
             try {
-                const response = await fetch('/api/mods', {
-                    method: 'POST',
-                    body: formData
+                await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/mods', true);
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(xhr.responseText);
+                        } else {
+                            reject(new Error(xhr.statusText || 'Upload failed'));
+                        }
+                    };
+                    xhr.onerror = function() { reject(new Error('Network error')); };
+                    xhr.upload.onprogress = function(event) {
+                        if (event.lengthComputable && progressBar && progressContainer) {
+                            const percent = Math.round((event.loaded / event.total) * 100);
+                            progressBar.style.width = percent + '%';
+                            progressBar.setAttribute('aria-valuenow', percent);
+                            progressBar.textContent = percent + '%';
+                        }
+                    };
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4 && progressBar && progressContainer) {
+                            progressBar.style.width = '100%';
+                            progressBar.setAttribute('aria-valuenow', '100');
+                            progressBar.textContent = '100%';
+                        }
+                    };
+                    xhr.send(formData);
                 });
-                const result = await response.json();
-                if (result.success) {
-                    showAlert(result.message, 'success');
-                    input.value = '';
-                    loadModList();
-                } else {
-                    showAlert(result.message || 'Failed to upload mod', 'danger');
-                }
+                showAlert('Mod uploaded successfully!', 'success');
+                input.value = '';
+                loadModList();
             } catch (error) {
                 showAlert('Error uploading mod: ' + error.message, 'danger');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+                if (progressContainer && progressBar) {
+                    setTimeout(() => {
+                        progressContainer.style.display = 'none';
+                        progressBar.style.width = '0%';
+                        progressBar.setAttribute('aria-valuenow', '0');
+                        progressBar.textContent = '0%';
+                    }, 1200);
+                }
             }
         }
 
@@ -2051,7 +2089,17 @@
                         });
                         const result = await resp.json();
                         if (result.success) {
-                            window.location.reload();
+                            // Hide the modal
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('authRequiredModal'));
+                            if (modal) modal.hide();
+                            // Re-fetch all necessary data
+                            await updateUserInfo();
+                            await loadCurrentConfig();
+                            await loadUserConfig();
+                            await loadBackups();
+                            updateMapDropdown();
+                            showAlert('Login successful!', 'success');
+                            return;
                         } else {
                             errorDiv.textContent = result.message || 'Login failed';
                             errorDiv.style.display = '';
@@ -2181,6 +2229,10 @@
             if (pre) {
                 pre.textContent = JSON.stringify(userConfig, null, 2);
             }
+        }
+
+        function downloadMod(modName) {
+            window.location.href = `/api/mods/${encodeURIComponent(modName)}/download`;
         }
     </script>
 </body>
