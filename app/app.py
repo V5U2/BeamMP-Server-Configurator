@@ -730,7 +730,7 @@ def update_user_config():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
-MODS_DIR = os.path.join(SERVER_DIR, 'Resources', 'Server')
+MODS_DIR = os.path.join(SERVER_DIR, 'Resources', 'Client')
 
 @app.route('/api/mods', methods=['GET'])
 @requires_auth

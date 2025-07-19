@@ -14,7 +14,7 @@ services:
       - CONFIG_DIR=${CONFIG_DIR:-/config}
       - BACKUP_DIR=${BACKUP_DIR:-/backup}
       - SERVER_DIR=${SERVER_DIR:-/server}
-      - BEAMMP_CONTAINER_NAME=${BEAMMP_CONTAINER_NAME:-beamng-mp}
+      - BEAMMP_CONTAINER_NAME=${BEAMMP_CONTAINER_NAME:-beammp-server}
       - DOCKER_HOST=${DOCKER_HOST:-http://docker-proxy:2375}
       - SECRET_KEY=${SECRET_KEY:-changeme}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
@@ -39,9 +39,9 @@ services:
     networks:
       - beammp-network
 
-  beamng-mp:
+  beammp-server:
     image: ich777/beamng-mp-server
-    container_name: beamng-mp
+    container_name: beammp-server
     environment:
       - TZ=Australia/Perth
       - GAME_PARAMS=
