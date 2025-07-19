@@ -681,9 +681,8 @@
         }
         @media (min-width: 769px) {
           #userInfoContainer {
-            min-width: 180px !important;
-            width: 240px !important;
-            max-width: 100% !important;
+            width: fit-content !important;
+            max-width: 480px !important;
             margin: 0.5em 0 0.5em auto !important;
             border-radius: 2em;
             background: var(--bg-card);
@@ -693,7 +692,6 @@
             justify-content: flex-end !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             padding: 0.3em 0.7em 0.3em 0.5em !important;
-            min-width: 0 !important;
             order: 2;
             text-align: right;
             gap: 0.7em;
@@ -701,6 +699,7 @@
           }
           #userName {
             min-width: 0;
+            flex: 1 1 auto;
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
