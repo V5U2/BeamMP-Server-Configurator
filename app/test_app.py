@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import secrets
 import tempfile
 import unittest
 import uuid
@@ -31,14 +32,16 @@ class SecurityRegressionTests(unittest.TestCase):
         self.config_dir.mkdir()
         self.backup_dir.mkdir()
         self.server_dir.mkdir()
+        self.admin_username = "admin"
+        self.admin_password = secrets.token_urlsafe(18)
 
         env = {
             "CONFIG_DIR": self.config_dir,
             "BACKUP_DIR": self.backup_dir,
             "SERVER_DIR": self.server_dir,
             "AUTH_MODE": "BASIC",
-            "ADMIN_USERNAME": "admin",
-            "ADMIN_PASSWORD": "password123",
+            "ADMIN_USERNAME": self.admin_username,
+            "ADMIN_PASSWORD": self.admin_password,
             "SECRET_KEY": "test-secret-key",
             "FLASK_ENV": "development",
         }
@@ -50,7 +53,7 @@ class SecurityRegressionTests(unittest.TestCase):
 
     def test_login_rejects_missing_csrf(self):
         self.client.get("/")
-        response = self.client.post("/login", json={"username": "admin", "password": "password123"})
+        response = self.client.post("/login", json={"username": self.admin_username, "password": self.admin_password})
         self.assertEqual(response.status_code, 403)
 
     def test_backup_restore_is_not_exposed_via_get(self):
@@ -85,13 +88,8 @@ class SecurityRegressionTests(unittest.TestCase):
         self.assertIsNone(blocked)
 
     def test_oauth_redirect_uri_must_be_absolute_http_or_https(self):
-        original = self.module.OAUTH_REDIRECT_URI
-        try:
-            self.module.OAUTH_REDIRECT_URI = "javascript:alert(1)"
-            with self.assertRaises(RuntimeError):
-                self.module.validate_oauth_redirect_uri()
-        finally:
-            self.module.OAUTH_REDIRECT_URI = original
+        with self.assertRaises(RuntimeError):
+            self.module.validate_absolute_http_url("/oauth/callback")
 
 
 if __name__ == "__main__":

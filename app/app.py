@@ -4,13 +4,13 @@ import os
 from datetime import datetime
 import json
 import shutil
-import argparse
 import requests
 from functools import wraps
 import werkzeug
 import secrets
 import time
 from urllib.parse import urlparse
+from werkzeug.middleware.proxy_fix import ProxyFix
 # SAML imports
 from saml2 import BINDING_HTTP_REDIRECT, BINDING_HTTP_POST
 from saml2.config import Config as Saml2Config
@@ -23,6 +23,7 @@ from authlib.integrations.flask_client import OAuth
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 configured_secret_key = os.environ.get('SECRET_KEY')
 app.secret_key = configured_secret_key or secrets.token_hex(32)
 is_production = os.environ.get('FLASK_ENV', '').lower() == 'production'
@@ -33,17 +34,10 @@ app.config.update(
     MAX_CONTENT_LENGTH=int(os.environ.get('MAX_CONTENT_LENGTH', 1024 * 1024 * 1024)),
 )
 
-# Parse command-line arguments for development overrides
-parser = argparse.ArgumentParser(description="BeamMP Server Configurator")
-parser.add_argument('--config-dir', type=str, help='Path to app config directory')
-parser.add_argument('--backup-dir', type=str, help='Path to app backup directory')
-parser.add_argument('--server-dir', type=str, help='Path to server data directory')
-args, unknown = parser.parse_known_args()
-
-# Configuration from environment variables or flags
-CONFIG_DIR = args.config_dir or os.environ.get('CONFIG_DIR', '/config')
-BACKUP_DIR = args.backup_dir or os.environ.get('BACKUP_DIR', '/backup')
-SERVER_DIR = args.server_dir or os.environ.get('SERVER_DIR', '/server')
+# Configuration from environment variables
+CONFIG_DIR = os.environ.get('CONFIG_DIR', '/config')
+BACKUP_DIR = os.environ.get('BACKUP_DIR', '/backup')
+SERVER_DIR = os.environ.get('SERVER_DIR', '/server')
 LOG_DIR = SERVER_DIR
 
 
@@ -317,10 +311,15 @@ def sanitize_log_filename(value):
     return filename
 
 
-def validate_oauth_redirect_uri():
-    parsed = urlparse(OAUTH_REDIRECT_URI)
+def validate_absolute_http_url(candidate):
+    parsed = urlparse(candidate)
     if parsed.scheme not in ('http', 'https') or not parsed.netloc:
-        raise RuntimeError('OAUTH_REDIRECT_URI must be an absolute http or https URL.')
+        raise RuntimeError('OAuth redirect URI must be an absolute http or https URL.')
+    return candidate
+
+
+def build_oauth_redirect_uri():
+    return validate_absolute_http_url(url_for('oauth_callback', _external=True))
 
 
 # --- SAML Configuration ---
@@ -416,14 +415,12 @@ OAUTH_AUTHORIZE_URL = os.environ.get('OAUTH_AUTHORIZE_URL')
 OAUTH_TOKEN_URL = os.environ.get('OAUTH_TOKEN_URL')
 OAUTH_USERINFO_URL = os.environ.get('OAUTH_USERINFO_URL')
 OAUTH_SCOPE = os.environ.get('OAUTH_SCOPE', 'openid email profile')
-OAUTH_REDIRECT_URI = os.environ.get('OAUTH_REDIRECT_URI', 'http://localhost:5000/oauth/callback')
 OAUTH_PROVIDER = os.environ.get('OAUTH_PROVIDER', 'authentik')
 
 OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL')
 OIDC_JWKS_URL = os.environ.get('OIDC_JWKS_URL')
 
 if AUTH_MODE == 'OAUTH':
-    validate_oauth_redirect_uri()
     oauth = OAuth(app)
 
     # Register OAuth client with OIDC discovery if available, else manual config
@@ -457,7 +454,7 @@ if AUTH_MODE == 'OAUTH':
 @app.route('/oauth/login')
 def oauth_login():
     session['post_auth_redirect'] = get_next_redirect_target()
-    redirect_uri = OAUTH_REDIRECT_URI
+    redirect_uri = build_oauth_redirect_uri()
     return oauth.main.authorize_redirect(redirect_uri)
 
 @app.route('/oauth/callback')
