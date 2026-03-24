@@ -36,9 +36,6 @@ class SecurityRegressionTests(unittest.TestCase):
         self.admin_password = secrets.token_urlsafe(18)
 
         env = {
-            "CONFIG_DIR": self.config_dir,
-            "BACKUP_DIR": self.backup_dir,
-            "SERVER_DIR": self.server_dir,
             "AUTH_MODE": "BASIC",
             "ADMIN_USERNAME": self.admin_username,
             "ADMIN_PASSWORD": self.admin_password,
@@ -46,6 +43,13 @@ class SecurityRegressionTests(unittest.TestCase):
             "FLASK_ENV": "development",
         }
         self.module = load_app_module(env)
+        self.module.app.config.update(
+            CONFIG_DIR=str(self.config_dir),
+            BACKUP_DIR=str(self.backup_dir),
+            SERVER_DIR=str(self.server_dir),
+        )
+        self.module.refresh_storage_paths()
+        self.module.ensure_runtime_directories()
         self.client = self.module.app.test_client()
 
     def tearDown(self):

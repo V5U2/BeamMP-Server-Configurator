@@ -34,11 +34,17 @@ app.config.update(
     MAX_CONTENT_LENGTH=int(os.environ.get('MAX_CONTENT_LENGTH', 1024 * 1024 * 1024)),
 )
 
-# Configuration from environment variables
-CONFIG_DIR = os.environ.get('CONFIG_DIR', '/config')
-BACKUP_DIR = os.environ.get('BACKUP_DIR', '/backup')
-SERVER_DIR = os.environ.get('SERVER_DIR', '/server')
-LOG_DIR = SERVER_DIR
+# Configuration from application settings
+DEFAULT_CONFIG_DIR = '/config'
+DEFAULT_BACKUP_DIR = '/backup'
+DEFAULT_SERVER_DIR = '/server'
+
+
+def normalize_storage_dir(path_value):
+    normalized = os.path.realpath(path_value)
+    if not os.path.isabs(normalized):
+        raise RuntimeError(f'Invalid storage path: {path_value}')
+    return normalized
 
 
 def init_safe_join(base_dir, *parts):
@@ -50,25 +56,50 @@ def init_safe_join(base_dir, *parts):
     return candidate
 
 
-SERVER_CONFIG_FILE = init_safe_join(SERVER_DIR, 'ServerConfig.toml')
-APP_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'app_config.json')
-USER_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'user_config.json')
+def refresh_storage_paths():
+    global CONFIG_DIR, BACKUP_DIR, SERVER_DIR, LOG_DIR
+    global SERVER_CONFIG_FILE, APP_CONFIG_FILE, USER_CONFIG_FILE, MODS_DIR
+
+    CONFIG_DIR = normalize_storage_dir(app.config['CONFIG_DIR'])
+    BACKUP_DIR = normalize_storage_dir(app.config['BACKUP_DIR'])
+    SERVER_DIR = normalize_storage_dir(app.config['SERVER_DIR'])
+    LOG_DIR = SERVER_DIR
+    SERVER_CONFIG_FILE = init_safe_join(SERVER_DIR, 'ServerConfig.toml')
+    APP_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'app_config.json')
+    USER_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'user_config.json')
+    MODS_DIR = init_safe_join(SERVER_DIR, 'Resources', 'Client')
+
+
+app.config.update(
+    CONFIG_DIR=DEFAULT_CONFIG_DIR,
+    BACKUP_DIR=DEFAULT_BACKUP_DIR,
+    SERVER_DIR=DEFAULT_SERVER_DIR,
+)
+refresh_storage_paths()
 
 DOCKER_PROXY_URL = os.environ.get('DOCKER_HOST', 'http://docker-proxy:2375')
 BEAMMP_CONTAINER_NAME = os.environ.get('BEAMMP_CONTAINER_NAME', 'beammp-server')
 
-# Ensure directories exist
-for directory in [BACKUP_DIR, CONFIG_DIR]:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+def ensure_runtime_directories():
+    for directory in [BACKUP_DIR, CONFIG_DIR]:
+        try:
+            os.makedirs(directory, exist_ok=True)
+        except OSError as exc:
+            print(f"Warning: unable to create runtime directory {directory}: {exc}")
+
+
+ensure_runtime_directories()
 
 # Get the directory where this script is located
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_APP_CONFIG_FILE = os.path.join(APP_ROOT, 'default_app_config.json')
 if not os.path.exists(APP_CONFIG_FILE):
-    os.makedirs(CONFIG_DIR, exist_ok=True)
-    shutil.copy(DEFAULT_APP_CONFIG_FILE, APP_CONFIG_FILE)
-    print(f"Created default app config at {APP_CONFIG_FILE}")
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        shutil.copy(DEFAULT_APP_CONFIG_FILE, APP_CONFIG_FILE)
+        print(f"Created default app config at {APP_CONFIG_FILE}")
+    except OSError as exc:
+        print(f"Warning: unable to initialize default app config at {APP_CONFIG_FILE}: {exc}")
 
 def load_app_config():
     """Load the application configuration from JSON file"""
@@ -965,8 +996,6 @@ def update_user_config():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
-
-MODS_DIR = os.path.join(SERVER_DIR, 'Resources', 'Client')
 
 @app.route('/api/mods', methods=['GET'])
 @requires_auth
