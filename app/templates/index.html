@@ -1493,16 +1493,44 @@
         }
 
         function setErrorPanel(element, title, message, tips) {
-            element.innerHTML = `
-                <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;">${escapeHtml(title)}</div>
-                <div style="color: #cccccc; line-height: 1.5;">${escapeHtml(message)}</div>
-                <div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;">
-                    <strong>Tips:</strong>
-                    <ul style="margin: 5px 0 0 20px; padding: 0;">
-                        ${tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
+            element.replaceChildren();
+
+            const titleDiv = document.createElement('div');
+            titleDiv.style.color = '#ff6b6b';
+            titleDiv.style.fontWeight = 'bold';
+            titleDiv.style.marginBottom = '10px';
+            titleDiv.textContent = title;
+            element.appendChild(titleDiv);
+
+            const messageDiv = document.createElement('div');
+            messageDiv.style.color = '#cccccc';
+            messageDiv.style.lineHeight = '1.5';
+            messageDiv.textContent = message;
+            element.appendChild(messageDiv);
+
+            if (tips.length > 0) {
+                const tipsWrapper = document.createElement('div');
+                tipsWrapper.style.marginTop = '15px';
+                tipsWrapper.style.padding = '10px';
+                tipsWrapper.style.background = 'rgba(255, 107, 53, 0.1)';
+                tipsWrapper.style.borderLeft = '3px solid #ff6b35';
+                tipsWrapper.style.borderRadius = '3px';
+
+                const strong = document.createElement('strong');
+                strong.textContent = 'Tips:';
+                tipsWrapper.appendChild(strong);
+
+                const list = document.createElement('ul');
+                list.style.margin = '5px 0 0 20px';
+                list.style.padding = '0';
+                tips.forEach((tip) => {
+                    const item = document.createElement('li');
+                    item.textContent = tip;
+                    list.appendChild(item);
+                });
+                tipsWrapper.appendChild(list);
+                element.appendChild(tipsWrapper);
+            }
         }
 
         async function loadAppConfig() {
@@ -1923,7 +1951,7 @@
                 const backupsList = doc.querySelector('#backups-list');
                 
                 if (backupsList) {
-                    document.getElementById('backups-list').innerHTML = backupsList.innerHTML;
+                    document.getElementById('backups-list').replaceChildren(...Array.from(backupsList.children).map((node) => node.cloneNode(true)));
                 }
             } catch (error) {
                 document.getElementById('backups-list').textContent = `Error loading backups: ${error.message}`;
@@ -2384,32 +2412,7 @@
                     const avatar = document.getElementById('userAvatar');
                     const name = document.getElementById('userName');
                     name.textContent = result.user;
-                    // Try to use Gravatar if user looks like an email
-                    if (result.user && result.user.includes('@')) {
-                        const email = result.user.trim().toLowerCase();
-                        const hash = md5(email);
-                        console.log('Gravatar MD5 input: "' + email + '" hash:', hash);
-                        const gravatarUrl = `https://www.gravatar.com/avatar/${hash}?s=64&d=404`;
-                        // Try to load gravatar, fallback to letter if not found
-                        const img = new Image();
-                        img.src = gravatarUrl;
-                        img.onload = function() {
-                            avatar.replaceChildren();
-                            const image = document.createElement('img');
-                            image.src = gravatarUrl;
-                            image.alt = 'avatar';
-                            image.style.width = '2.2em';
-                            image.style.height = '2.2em';
-                            image.style.borderRadius = '50%';
-                            image.style.objectFit = 'cover';
-                            avatar.appendChild(image);
-                        };
-                        img.onerror = function() {
-                            avatar.textContent = email.charAt(0).toUpperCase();
-                        };
-                    } else {
-                        avatar.textContent = result.user.charAt(0).toUpperCase();
-                    }
+                    avatar.textContent = result.user.charAt(0).toUpperCase();
                     container.style.display = 'flex';
                     logoutBtn.style.display = '';
                 } else {

@@ -78,6 +78,21 @@ class SecurityRegressionTests(unittest.TestCase):
         with self.module.app.test_request_context("/oauth/login?next=/api/config"):
             self.assertEqual(self.module.get_next_redirect_target(), "/api/config")
 
+    def test_safe_join_blocks_escape_from_base_directory(self):
+        allowed = self.module.safe_join(str(self.backup_dir), "test.toml")
+        blocked = self.module.safe_join(str(self.backup_dir), "../outside.toml")
+        self.assertTrue(str(allowed).startswith(str(self.backup_dir)))
+        self.assertIsNone(blocked)
+
+    def test_oauth_redirect_uri_must_be_absolute_http_or_https(self):
+        original = self.module.OAUTH_REDIRECT_URI
+        try:
+            self.module.OAUTH_REDIRECT_URI = "javascript:alert(1)"
+            with self.assertRaises(RuntimeError):
+                self.module.validate_oauth_redirect_uri()
+        finally:
+            self.module.OAUTH_REDIRECT_URI = original
+
 
 if __name__ == "__main__":
     unittest.main()

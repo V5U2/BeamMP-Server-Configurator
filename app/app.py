@@ -23,7 +23,6 @@ from authlib.integrations.flask_client import OAuth
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-DEFAULT_SECRET_KEY = 'beammp_config_secret_key_2024'
 configured_secret_key = os.environ.get('SECRET_KEY')
 app.secret_key = configured_secret_key or secrets.token_hex(32)
 is_production = os.environ.get('FLASK_ENV', '').lower() == 'production'
@@ -46,9 +45,20 @@ CONFIG_DIR = args.config_dir or os.environ.get('CONFIG_DIR', '/config')
 BACKUP_DIR = args.backup_dir or os.environ.get('BACKUP_DIR', '/backup')
 SERVER_DIR = args.server_dir or os.environ.get('SERVER_DIR', '/server')
 LOG_DIR = SERVER_DIR
-SERVER_CONFIG_FILE = os.path.join(SERVER_DIR, 'ServerConfig.toml')
-APP_CONFIG_FILE = os.path.join(CONFIG_DIR, 'app_config.json')
-USER_CONFIG_FILE = os.path.join(CONFIG_DIR, 'user_config.json')
+
+
+def init_safe_join(base_dir, *parts):
+    candidate = os.path.join(base_dir, *parts)
+    base_real = os.path.realpath(base_dir)
+    candidate_real = os.path.realpath(candidate)
+    if os.path.commonpath([base_real, candidate_real]) != base_real:
+        raise RuntimeError(f'Invalid path configuration under {base_dir}')
+    return candidate
+
+
+SERVER_CONFIG_FILE = init_safe_join(SERVER_DIR, 'ServerConfig.toml')
+APP_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'app_config.json')
+USER_CONFIG_FILE = init_safe_join(CONFIG_DIR, 'user_config.json')
 
 DOCKER_PROXY_URL = os.environ.get('DOCKER_HOST', 'http://docker-proxy:2375')
 BEAMMP_CONTAINER_NAME = os.environ.get('BEAMMP_CONTAINER_NAME', 'beammp-server')
@@ -121,7 +131,9 @@ def save_config(config_data):
     try:
         # Create backup
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = os.path.join(BACKUP_DIR, f"ServerConfig_backup_{timestamp}.toml")
+        backup_file = safe_join(BACKUP_DIR, f"ServerConfig_backup_{timestamp}.toml")
+        if not backup_file:
+            raise ValueError('Invalid backup file path')
         
         if os.path.exists(SERVER_CONFIG_FILE):
             with open(SERVER_CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -146,7 +158,9 @@ def save_config(config_data):
         if len(backups) > retention_count:
             for old_backup in backups[retention_count:]:
                 try:
-                    os.remove(os.path.join(BACKUP_DIR, old_backup))
+                    old_backup_path = safe_join(BACKUP_DIR, old_backup)
+                    if old_backup_path and os.path.isfile(old_backup_path):
+                        os.remove(old_backup_path)
                 except Exception:
                     pass
         
@@ -281,6 +295,19 @@ def sanitize_filename(value):
     return filename
 
 
+def is_within_directory(base_dir, candidate_path):
+    base_real = os.path.realpath(base_dir)
+    candidate_real = os.path.realpath(candidate_path)
+    return os.path.commonpath([base_real, candidate_real]) == base_real
+
+
+def safe_join(base_dir, *parts):
+    candidate = os.path.join(base_dir, *parts)
+    if not is_within_directory(base_dir, candidate):
+        return None
+    return candidate
+
+
 def sanitize_log_filename(value):
     filename = sanitize_filename(value)
     if not filename:
@@ -288,6 +315,12 @@ def sanitize_log_filename(value):
     if filename != value.strip():
         return None
     return filename
+
+
+def validate_oauth_redirect_uri():
+    parsed = urlparse(OAUTH_REDIRECT_URI)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        raise RuntimeError('OAUTH_REDIRECT_URI must be an absolute http or https URL.')
 
 
 # --- SAML Configuration ---
@@ -390,6 +423,7 @@ OIDC_DISCOVERY_URL = os.environ.get('OIDC_DISCOVERY_URL')
 OIDC_JWKS_URL = os.environ.get('OIDC_JWKS_URL')
 
 if AUTH_MODE == 'OAUTH':
+    validate_oauth_redirect_uri()
     oauth = OAuth(app)
 
     # Register OAuth client with OIDC discovery if available, else manual config
@@ -555,9 +589,7 @@ def apply_security_headers(response):
 
 
 # --- Enforce SECRET_KEY in production ---
-if is_production and (
-    not configured_secret_key or configured_secret_key == DEFAULT_SECRET_KEY
-):
+if is_production and not configured_secret_key:
     raise RuntimeError('A strong SECRET_KEY environment variable must be set in production!')
 
 # --- Sanitize file path inputs ---
@@ -689,7 +721,10 @@ def restore_backup(filename):
     if not safe_filename or not safe_filename.endswith('.toml'):
         flash('Invalid backup filename.', 'error')
         return redirect(url_for('list_backups'))
-    backup_path = os.path.join(BACKUP_DIR, safe_filename)
+    backup_path = safe_join(BACKUP_DIR, safe_filename)
+    if not backup_path:
+        flash('Invalid backup filename.', 'error')
+        return redirect(url_for('list_backups'))
     if os.path.exists(backup_path):
         try:
             with open(backup_path, 'r', encoding='utf-8') as f:
@@ -711,7 +746,10 @@ def delete_backup(filename):
     if not safe_filename or not safe_filename.endswith('.toml'):
         flash('Invalid backup filename.', 'error')
         return redirect(url_for('list_backups'))
-    backup_path = os.path.join(BACKUP_DIR, safe_filename)
+    backup_path = safe_join(BACKUP_DIR, safe_filename)
+    if not backup_path:
+        flash('Invalid backup filename.', 'error')
+        return redirect(url_for('list_backups'))
     if os.path.exists(backup_path):
         try:
             os.remove(backup_path)
@@ -808,7 +846,13 @@ def get_server_log():
     try:
         user_config = load_user_config()
         log_filename = sanitize_log_filename(user_config.get('serverLogFilename', 'Server.log')) or 'Server.log'
-        log_path = os.path.join(LOG_DIR, log_filename)
+        log_path = safe_join(LOG_DIR, log_filename)
+        if not log_path:
+            return jsonify({
+                'success': False,
+                'log': '',
+                'message': 'Invalid log filename.'
+            }), 400
         
         if not os.path.exists(log_path):
             return jsonify({
@@ -875,7 +919,10 @@ def load_user_config():
 
 def save_user_config(data):
     try:
-        with open(USER_CONFIG_FILE, 'w', encoding='utf-8') as f:
+        user_config_path = safe_join(CONFIG_DIR, os.path.basename(USER_CONFIG_FILE))
+        if not user_config_path:
+            raise ValueError('Invalid user config path')
+        with open(user_config_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
         return True
     except Exception as e:
@@ -949,7 +996,9 @@ def upload_mod():
         return jsonify({'success': False, 'message': 'Only .zip files are allowed'}), 400
     filename = werkzeug.utils.secure_filename(file.filename)
     os.makedirs(MODS_DIR, exist_ok=True)
-    save_path = os.path.join(MODS_DIR, filename)
+    save_path = safe_join(MODS_DIR, filename)
+    if not save_path:
+        return jsonify({'success': False, 'message': 'Invalid filename'}), 400
     try:
         file.save(save_path)
         return jsonify({'success': True, 'message': f'File {filename} uploaded successfully'})
@@ -963,7 +1012,9 @@ def delete_mod(modname):
     if not modname.lower().endswith('.zip'):
         return jsonify({'success': False, 'message': 'Only .zip files can be deleted'}), 400
     filename = werkzeug.utils.secure_filename(modname)
-    file_path = os.path.join(MODS_DIR, filename)
+    file_path = safe_join(MODS_DIR, filename)
+    if not file_path:
+        return jsonify({'success': False, 'message': 'Invalid filename'}), 400
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'message': 'File not found'}), 404
     try:
@@ -979,7 +1030,9 @@ def download_mod(modname):
     if not modname.lower().endswith('.zip'):
         return jsonify({'success': False, 'message': 'Only .zip files can be downloaded'}), 400
     filename = werkzeug.utils.secure_filename(modname)
-    file_path = os.path.join(MODS_DIR, filename)
+    file_path = safe_join(MODS_DIR, filename)
+    if not file_path:
+        return jsonify({'success': False, 'message': 'Invalid filename'}), 400
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'message': 'File not found'}), 404
     try:
