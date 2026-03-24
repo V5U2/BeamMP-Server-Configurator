@@ -1,5 +1,7 @@
 # 🚗 BeamMP Server Configurator
 
+[![Build Status](https://github.com/V5U2/BeamMP-Server-Configurator/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/V5U2/BeamMP-Server-Configurator/actions/workflows/docker-publish.yml)
+
 A modern web-based configuration tool for BeamMP servers with a beautiful UI, automatic backups, and secure Docker integration.
 
 ## ✨ Features
