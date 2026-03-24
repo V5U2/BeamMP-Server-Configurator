@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session, abort
 import toml
 import os
 from datetime import datetime
@@ -6,9 +6,11 @@ import json
 import shutil
 import argparse
 import requests
-import base64
 from functools import wraps
 import werkzeug
+import secrets
+import time
+from urllib.parse import urlparse
 # SAML imports
 from saml2 import BINDING_HTTP_REDIRECT, BINDING_HTTP_POST
 from saml2.config import Config as Saml2Config
@@ -21,7 +23,16 @@ from authlib.integrations.flask_client import OAuth
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(APP_ROOT, 'templates')
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-app.secret_key = os.environ.get('SECRET_KEY', 'beammp_config_secret_key_2024')
+DEFAULT_SECRET_KEY = 'beammp_config_secret_key_2024'
+configured_secret_key = os.environ.get('SECRET_KEY')
+app.secret_key = configured_secret_key or secrets.token_hex(32)
+is_production = os.environ.get('FLASK_ENV', '').lower() == 'production'
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('COOKIE_SECURE', '1' if is_production else '0') == '1',
+    MAX_CONTENT_LENGTH=int(os.environ.get('MAX_CONTENT_LENGTH', 1024 * 1024 * 1024)),
+)
 
 # Parse command-line arguments for development overrides
 parser = argparse.ArgumentParser(description="BeamMP Server Configurator")
@@ -155,6 +166,11 @@ def get_field_type(value):
     else:
         return 'text'
 
+
+@app.context_processor
+def inject_template_security_context():
+    return {'csrf_token': get_or_create_csrf_token()}
+
 @app.route('/')
 def index():
     """Main page showing the configuration form"""
@@ -171,6 +187,108 @@ if AUTH_MODE == 'NO_AUTH':
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')  # Must be set in production
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get('LOGIN_RATE_LIMIT_WINDOW_SECONDS', '300'))
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS = int(os.environ.get('LOGIN_RATE_LIMIT_MAX_ATTEMPTS', '5'))
+login_attempts = {}
+
+
+def get_client_ip():
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def prune_login_attempts(now):
+    expired_keys = [
+        key for key, attempts in login_attempts.items()
+        if all(now - attempt_ts > LOGIN_RATE_LIMIT_WINDOW_SECONDS for attempt_ts in attempts)
+    ]
+    for key in expired_keys:
+        login_attempts.pop(key, None)
+
+
+def is_login_rate_limited(username):
+    now = time.time()
+    prune_login_attempts(now)
+    key = f"{get_client_ip()}:{username or ''}"
+    attempts = [
+        attempt_ts for attempt_ts in login_attempts.get(key, [])
+        if now - attempt_ts <= LOGIN_RATE_LIMIT_WINDOW_SECONDS
+    ]
+    login_attempts[key] = attempts
+    return len(attempts) >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS
+
+
+def record_failed_login(username):
+    now = time.time()
+    prune_login_attempts(now)
+    key = f"{get_client_ip()}:{username or ''}"
+    login_attempts.setdefault(key, []).append(now)
+
+
+def clear_login_attempts(username):
+    key = f"{get_client_ip()}:{username or ''}"
+    login_attempts.pop(key, None)
+
+
+def get_or_create_csrf_token():
+    token = session.get('csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['csrf_token'] = token
+    return token
+
+
+def validate_csrf():
+    expected_token = session.get('csrf_token')
+    provided_token = request.headers.get('X-CSRF-Token')
+    if not provided_token:
+        provided_token = request.form.get('csrf_token')
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        provided_token = provided_token or data.get('csrf_token')
+    return bool(expected_token and provided_token and secrets.compare_digest(expected_token, provided_token))
+
+
+def is_safe_redirect_target(target):
+    if not target:
+        return False
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return False
+    return target.startswith('/') and not target.startswith('//')
+
+
+def get_next_redirect_target():
+    target = request.args.get('next') or request.form.get('next')
+    if is_safe_redirect_target(target):
+        return target
+    return url_for('index')
+
+
+def get_post_auth_redirect():
+    target = session.pop('post_auth_redirect', None)
+    if is_safe_redirect_target(target):
+        return target
+    return url_for('index')
+
+
+def sanitize_filename(value):
+    filename = os.path.basename((value or '').strip())
+    if not filename or filename in {'.', '..'}:
+        return None
+    return filename
+
+
+def sanitize_log_filename(value):
+    filename = sanitize_filename(value)
+    if not filename:
+        return None
+    if filename != value.strip():
+        return None
+    return filename
+
 
 # --- SAML Configuration ---
 SAML_IDP_METADATA_URL = os.environ.get('SAML_IDP_METADATA_URL')  # e.g. Authentik or Google Workspace metadata URL
@@ -191,7 +309,7 @@ def load_saml_config():
                         (SAML_SP_ACS_URL, BINDING_HTTP_REDIRECT),
                     ],
                 },
-                'allow_unsolicited': True,
+                'allow_unsolicited': False,
                 'authn_requests_signed': False,
                 'logout_requests_signed': True,
                 'want_assertions_signed': True,
@@ -219,6 +337,7 @@ def get_saml_client():
 # --- SAML Endpoints ---
 @app.route('/saml/login')
 def saml_login():
+    session['post_auth_redirect'] = get_next_redirect_target()
     saml_client = get_saml_client()
     reqid, info = saml_client.prepare_for_authenticate()
     for key, value in info['headers']:
@@ -243,9 +362,7 @@ def saml_acs():
         'name_id': str(authn_response.name_id),
         'attributes': authn_response.ava
     }
-    # Optionally, redirect to original URL (RelayState)
-    relay_state = request.form.get('RelayState')
-    return redirect(relay_state or url_for('index'))
+    return redirect(get_post_auth_redirect())
 
 @app.route('/saml/metadata')
 def saml_metadata():
@@ -305,26 +422,23 @@ if AUTH_MODE == 'OAUTH':
 
 @app.route('/oauth/login')
 def oauth_login():
+    session['post_auth_redirect'] = get_next_redirect_target()
     redirect_uri = OAUTH_REDIRECT_URI
     return oauth.main.authorize_redirect(redirect_uri)
 
 @app.route('/oauth/callback')
 def oauth_callback():
-    print("In /oauth/callback")
     try:
         token = oauth.main.authorize_access_token()
-        print("Token:", token)
         if OIDC_DISCOVERY_URL:
             userinfo = oauth.main.userinfo()
         else:
             userinfo = oauth.main.get(OAUTH_USERINFO_URL).json()
-        print("Userinfo:", userinfo)
         session['oauth_user'] = userinfo
-        next_url = request.args.get('next') or url_for('index')
-        return redirect(next_url)
+        return redirect(get_post_auth_redirect())
     except Exception as e:
         print("OAuth callback error:", e)
-        return f"OAuth callback error: {e}", 500
+        return "OAuth callback error", 500
 
 @app.route('/oauth/logout')
 def oauth_logout():
@@ -336,16 +450,22 @@ def oauth_logout():
 def login():
     if AUTH_MODE != 'BASIC':
         return jsonify({'success': False, 'message': 'Login not allowed in this mode'}), 403
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+    data = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+    if is_login_rate_limited(username):
+        return jsonify({'success': False, 'message': 'Too many failed login attempts. Try again later.'}), 429
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         session['basic_user'] = username
-        return jsonify({'success': True, 'user': username})
+        clear_login_attempts(username)
+        session['csrf_token'] = secrets.token_urlsafe(32)
+        return jsonify({'success': True, 'user': username, 'csrf_token': session['csrf_token']})
+    record_failed_login(username)
     return jsonify({'success': False, 'message': 'Invalid username or password'}), 401
 
 @app.route('/logout', methods=['POST'])
 def logout():
+    session.pop('csrf_token', None)
     session.pop('basic_user', None)
     session.pop('oauth_user', None)
     session.pop('saml_user', None)
@@ -368,16 +488,17 @@ def requires_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         print(f"[AUTH DEBUG] Mode: {AUTH_MODE}, Endpoint: {request.path}")
+        next_path = request.full_path[:-1] if request.full_path.endswith('?') else request.full_path
         if AUTH_MODE == 'NO_AUTH':
             print("[AUTH DEBUG] NO_AUTH: allowing access")
             return f(*args, **kwargs)
         if not check_auth(request.headers.get('Authorization')):
             if AUTH_MODE == 'SAML':
                 print("[AUTH DEBUG] SAML: redirecting to /saml/login")
-                return redirect(url_for('saml_login', next=request.url))
+                return redirect(url_for('saml_login', next=next_path))
             if AUTH_MODE == 'OAUTH':
                 print("[AUTH DEBUG] OAUTH: redirecting to /oauth/login")
-                return redirect(url_for('oauth_login', next=request.url))
+                return redirect(url_for('oauth_login', next=next_path))
             if AUTH_MODE == 'BASIC':
                 print("[AUTH DEBUG] BASIC: returning 401 JSON for login modal")
                 # Always return JSON for API, redirect for UI
@@ -398,9 +519,46 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+@app.before_request
+def enforce_request_security():
+    get_or_create_csrf_token()
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        if request.endpoint == 'saml_acs':
+            return None
+        if not validate_csrf():
+            if request.path.startswith('/api/') or request.path in ('/login', '/logout'):
+                return jsonify({'success': False, 'message': 'CSRF validation failed'}), 403
+            abort(403)
+    return None
+
+
+@app.after_request
+def apply_security_headers(response):
+    response.headers.setdefault('Cache-Control', 'no-store')
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'same-origin')
+    response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+    response.headers.setdefault(
+        'Content-Security-Policy',
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "font-src 'self' https://cdnjs.cloudflare.com; "
+        "img-src 'self' data: https://www.gravatar.com; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    return response
+
+
 # --- Enforce SECRET_KEY in production ---
-if os.environ.get('FLASK_ENV', '').lower() == 'production' and not os.environ.get('SECRET_KEY'):
-    raise RuntimeError('SECRET_KEY environment variable must be set in production!')
+if is_production and (
+    not configured_secret_key or configured_secret_key == DEFAULT_SECRET_KEY
+):
+    raise RuntimeError('A strong SECRET_KEY environment variable must be set in production!')
 
 # --- Sanitize file path inputs ---
 # (used in restore_backup and delete_backup)
@@ -418,12 +576,36 @@ def validate_config_data(data):
     return True
 
 def validate_user_config_data(data):
-    # Only allow dict with known keys
     allowed_keys = {'theme', 'customMaps', 'customTags', 'backupRetention', 'serverLogFilename', 'logAutoRefresh'}
     if not isinstance(data, dict):
         return False
     for k in data:
         if k not in allowed_keys:
+            return False
+    if 'theme' in data and data['theme'] not in ('dark', 'light'):
+        return False
+    if 'backupRetention' in data:
+        try:
+            retention = int(data['backupRetention'])
+        except (TypeError, ValueError):
+            return False
+        if retention < 1 or retention > 100:
+            return False
+    if 'logAutoRefresh' in data:
+        try:
+            refresh = int(data['logAutoRefresh'])
+        except (TypeError, ValueError):
+            return False
+        if refresh < 0 or refresh > 3600:
+            return False
+    if 'serverLogFilename' in data:
+        if sanitize_log_filename(data['serverLogFilename']) is None:
+            return False
+    if 'customMaps' in data:
+        if not isinstance(data['customMaps'], list) or any(not isinstance(item, str) or len(item) > 512 for item in data['customMaps']):
+            return False
+    if 'customTags' in data:
+        if not isinstance(data['customTags'], list) or any(not isinstance(item, str) or len(item) > 128 for item in data['customTags']):
             return False
     return True
 
@@ -500,17 +682,21 @@ def list_backups():
     backups.sort(key=lambda x: x['modified'], reverse=True)
     return render_template('backups.html', backups=backups)
 
-@app.route('/backup/<filename>')
+@app.route('/backup/<filename>', methods=['POST'])
 @requires_auth
 def restore_backup(filename):
-    backup_path = os.path.join(BACKUP_DIR, os.path.basename(filename))
+    safe_filename = sanitize_filename(filename)
+    if not safe_filename or not safe_filename.endswith('.toml'):
+        flash('Invalid backup filename.', 'error')
+        return redirect(url_for('list_backups'))
+    backup_path = os.path.join(BACKUP_DIR, safe_filename)
     if os.path.exists(backup_path):
         try:
             with open(backup_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             with open(SERVER_CONFIG_FILE, 'w', encoding='utf-8') as f:
                 f.write(content)
-            flash(f'Backup {filename} restored successfully!', 'success')
+            flash(f'Backup {safe_filename} restored successfully!', 'success')
         except Exception as e:
             flash(f'Error restoring backup: {str(e)}', 'error')
     else:
@@ -521,11 +707,15 @@ def restore_backup(filename):
 @app.route('/backup/delete/<filename>', methods=['POST'])
 @requires_auth
 def delete_backup(filename):
-    backup_path = os.path.join(BACKUP_DIR, os.path.basename(filename))
+    safe_filename = sanitize_filename(filename)
+    if not safe_filename or not safe_filename.endswith('.toml'):
+        flash('Invalid backup filename.', 'error')
+        return redirect(url_for('list_backups'))
+    backup_path = os.path.join(BACKUP_DIR, safe_filename)
     if os.path.exists(backup_path):
         try:
             os.remove(backup_path)
-            flash(f'Backup {filename} deleted successfully!', 'success')
+            flash(f'Backup {safe_filename} deleted successfully!', 'success')
         except Exception as e:
             flash(f'Error deleting backup: {str(e)}', 'error')
     else:
@@ -617,7 +807,7 @@ def get_server_log():
     """API endpoint to get the server log"""
     try:
         user_config = load_user_config()
-        log_filename = user_config.get('serverLogFilename', 'Server.log')
+        log_filename = sanitize_log_filename(user_config.get('serverLogFilename', 'Server.log')) or 'Server.log'
         log_path = os.path.join(LOG_DIR, log_filename)
         
         if not os.path.exists(log_path):
@@ -722,6 +912,8 @@ def update_user_config():
         data = request.get_json()
         if not validate_user_config_data(data):
             return jsonify({'success': False, 'message': 'Invalid user config data'}), 400
+        if 'serverLogFilename' in data:
+            data['serverLogFilename'] = sanitize_log_filename(data['serverLogFilename'])
         # Auto-complete custom map paths
         if 'customMaps' in data and isinstance(data['customMaps'], list):
             data['customMaps'] = [normalize_custom_map_entry(e) for e in data['customMaps']]
@@ -813,7 +1005,7 @@ def get_auth_info():
             user = session['oauth_user'].get('email') or session['oauth_user'].get('preferred_username')
         else:
             user = None
-    return jsonify({'mode': mode, 'user': user})
+    return jsonify({'mode': mode, 'user': user, 'csrf_token': get_or_create_csrf_token()})
 
 if __name__ == '__main__':
     if AUTH_MODE == 'BASIC' and not ADMIN_PASSWORD:

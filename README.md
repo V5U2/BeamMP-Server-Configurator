@@ -175,8 +175,20 @@ networks:
 - All sensitive endpoints require authentication (BASIC, SAML, or OAUTH) except in `NO_AUTH` mode.
 - BASIC auth now uses a session-based modal login (not HTTP Basic popups).
 - SAML and OAuth2/OIDC SSO are supported for enterprise/SSO environments.
+- State-changing requests are protected with CSRF validation.
+- Session cookies are `HttpOnly` and `SameSite=Lax`; set `COOKIE_SECURE=1` when the app is served over HTTPS.
+- Production deployments must use a strong `SECRET_KEY`.
 - The app uses a Docker proxy (`docker-proxy` service) to restrict permissions, allowing only server restarts and log viewing (no full Docker access required).
 - The container name is set via `BEAMMP_CONTAINER_NAME` in the environment, not in the UI. This prevents users from using the app to modify other containers.
+- See `SECURITY.md` for the vulnerability reporting policy, supported versions, and deployment hardening guidance.
+
+## 🚀 Releases
+
+- GitHub Releases are managed through `release-please` on the `main` branch.
+- Container publishing is handled by GitHub Actions and pushes images to `ghcr.io/v5u2/beammp-server-configurator`.
+- Tagged releases publish versioned tags such as `vX.Y.Z`, `X.Y.Z`, `X.Y`, and refresh `latest`.
+- Branch pushes to `main` continue to publish a branch image tag for integration testing without redefining `latest`.
+- Use Conventional Commits so release automation can infer the correct semantic version bump.
 
 ## 🖥️ UI & User Experience
 

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>BeamMP Server Configurator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -1465,6 +1466,45 @@
         let appConfig = {};
         let logAutoRefreshTimer = null;
 
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
+        async function fetchJson(url, options = {}) {
+            const response = await fetch(url, options);
+            const data = await response.json();
+            if (data && data.csrf_token) {
+                document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.csrf_token);
+            }
+            return { response, data };
+        }
+
+        function addCsrfHeaders(headers = {}) {
+            return { ...headers, 'X-CSRF-Token': getCsrfToken() };
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function setErrorPanel(element, title, message, tips) {
+            element.innerHTML = `
+                <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;">${escapeHtml(title)}</div>
+                <div style="color: #cccccc; line-height: 1.5;">${escapeHtml(message)}</div>
+                <div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;">
+                    <strong>Tips:</strong>
+                    <ul style="margin: 5px 0 0 20px; padding: 0;">
+                        ${tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
         async function loadAppConfig() {
             try {
                 const response = await fetch('/api/app-config');
@@ -1577,8 +1617,8 @@
             userConfig.logAutoRefresh = parseInt(document.getElementById('logAutoRefresh').value) || 0;
             await fetch('/api/user-config', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userConfig)
+                headers: addCsrfHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ ...userConfig, csrf_token: getCsrfToken() })
             });
             updateThemeDropdown();
         }
@@ -1660,7 +1700,18 @@
                     return;
                 }
                 const li = document.createElement('li');
-                li.innerHTML = `<a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-value="${map.path}"><span>${map.name}</span><span class='text-muted small ms-2'>${map.path}</span></a>`;
+                const link = document.createElement('a');
+                link.className = 'dropdown-item d-flex justify-content-between align-items-center';
+                link.href = '#';
+                link.dataset.value = map.path;
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = map.name;
+                const pathSpan = document.createElement('span');
+                pathSpan.className = 'text-muted small ms-2';
+                pathSpan.textContent = map.path;
+                link.appendChild(nameSpan);
+                link.appendChild(pathSpan);
+                li.appendChild(link);
                 mapDropdownMenu.appendChild(li);
             });
             
@@ -1671,7 +1722,18 @@
                     const name = parts[0].trim();
                     const path = parts[1].trim();
                     const li = document.createElement('li');
-                    li.innerHTML = `<a class="dropdown-item d-flex justify-content-between align-items-center" href="#" data-value="${path}"><span>${name}</span><span class='text-muted small ms-2'>${path}</span></a>`;
+                    const link = document.createElement('a');
+                    link.className = 'dropdown-item d-flex justify-content-between align-items-center';
+                    link.href = '#';
+                    link.dataset.value = path;
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = name;
+                    const pathSpan = document.createElement('span');
+                    pathSpan.className = 'text-muted small ms-2';
+                    pathSpan.textContent = path;
+                    link.appendChild(nameSpan);
+                    link.appendChild(pathSpan);
+                    li.appendChild(link);
                     mapDropdownMenu.appendChild(li);
                 }
             });
@@ -1735,12 +1797,20 @@
                 tags.forEach(tag => {
                     const tagDiv = document.createElement('div');
                     tagDiv.className = 'col-md-6';
-                    tagDiv.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input tag-checkbox" type="checkbox" value="${tag}" id="tag-${tag.toLowerCase().replace(/[^a-z0-9]/g, '-')}">
-                            <label class="form-check-label" for="tag-${tag.toLowerCase().replace(/[^a-z0-9]/g, '-')}">${tag}</label>
-                        </div>
-                    `;
+                    const formCheck = document.createElement('div');
+                    formCheck.className = 'form-check';
+                    const checkbox = document.createElement('input');
+                    checkbox.className = 'form-check-input tag-checkbox';
+                    checkbox.type = 'checkbox';
+                    checkbox.value = tag;
+                    checkbox.id = `tag-${tag.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label';
+                    label.htmlFor = checkbox.id;
+                    label.textContent = tag;
+                    formCheck.appendChild(checkbox);
+                    formCheck.appendChild(label);
+                    tagDiv.appendChild(formCheck);
                     tagsContainer.appendChild(tagDiv);
                 });
                 
@@ -1820,9 +1890,10 @@
                 const response = await fetch('/api/config', {
                     method: 'POST',
                     headers: {
+                        ...addCsrfHeaders(),
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(config)
+                    body: JSON.stringify({ ...config, csrf_token: getCsrfToken() })
                 });
 
                 const result = await response.json();
@@ -1855,32 +1926,38 @@
                     document.getElementById('backups-list').innerHTML = backupsList.innerHTML;
                 }
             } catch (error) {
-                document.getElementById('backups-list').innerHTML = 
-                    '<div class="alert alert-danger">Error loading backups: ' + error.message + '</div>';
+                document.getElementById('backups-list').textContent = `Error loading backups: ${error.message}`;
             }
         }
 
         function showAlert(message, type) {
             const alertContainer = document.getElementById('alert-container');
             const alertId = 'alert-' + Date.now();
-            let alertHtml;
+            const wrapper = document.createElement('div');
+            wrapper.className = `alert alert-${type} alert-dismissible fade show`;
+            wrapper.id = alertId;
+            wrapper.setAttribute('role', 'alert');
             if (message && message.toLowerCase().includes('saml')) {
-                // Show full SAML error, scrollable if long, and do not auto-dismiss
-                alertHtml = `
-                    <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert" style="max-height: 300px; overflow-y: auto;">
-                        <strong>SAML Error:</strong><br><pre style="white-space: pre-wrap; word-break: break-all;">${message}</pre>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `;
+                wrapper.style.maxHeight = '300px';
+                wrapper.style.overflowY = 'auto';
+                const title = document.createElement('strong');
+                title.textContent = 'SAML Error:';
+                const pre = document.createElement('pre');
+                pre.style.whiteSpace = 'pre-wrap';
+                pre.style.wordBreak = 'break-all';
+                pre.textContent = message;
+                wrapper.appendChild(title);
+                wrapper.appendChild(document.createElement('br'));
+                wrapper.appendChild(pre);
             } else {
-                alertHtml = `
-                    <div class="alert alert-${type} alert-dismissible fade show" id="${alertId}" role="alert">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                `;
+                wrapper.textContent = message;
             }
-            alertContainer.innerHTML = alertHtml;
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'btn-close';
+            closeBtn.setAttribute('data-bs-dismiss', 'alert');
+            wrapper.appendChild(closeBtn);
+            alertContainer.replaceChildren(wrapper);
             // Only auto-dismiss if not SAML error and not danger
             if (!message || (!message.toLowerCase().includes('saml') && type !== 'danger')) {
                 setTimeout(() => {
@@ -1919,8 +1996,8 @@
 
         async function loadCurrentConfig() {
             try {
-                const response = await fetch('/api/config');
-                currentConfig = await response.json();
+                const { data } = await fetchJson('/api/config');
+                currentConfig = data;
                 populateForm(currentConfig);
             } catch (error) {
                 if (window.isAuthenticated === false) return;
@@ -1968,8 +2045,7 @@
             const infoElement = document.getElementById('serverInfo');
             const infoContent = document.getElementById('serverInfoContent');
             try {
-                const response = await fetch('/api/server-status');
-                const result = await response.json();
+                const { data: result } = await fetchJson('/api/server-status');
                 let statusText = result.status;
                 switch (result.status) {
                     case 'running': statusText = 'Running'; break;
@@ -1978,28 +2054,43 @@
                     case 'restarting': statusText = 'Restarting'; break;
                 }
                 if (result.success) {
-                    infoContent.innerHTML = `
-                        <div class="server-info-row">
-                            <span class="server-info-label">Container Name:</span>
-                            <span class="server-info-value">${result.container_name}</span>
-                        </div>
-                        <div class="server-info-row">
-                            <span class="server-info-label">Image:</span>
-                            <span class="server-info-value">${result.image}</span>
-                        </div>
-                        <div class="server-info-row">
-                            <span class="server-info-label">Container ID:</span>
-                            <span class="server-info-value server-info-id">${result.container_id}</span>
-                        </div>
-                        <div class="server-info-row">
-                            <span class="server-info-label">Created:</span>
-                            <span class="server-info-value">${new Date(result.created).toLocaleString()}</span>
-                        </div>
-                        <div class="server-info-row">
-                            <span class="server-info-label">Status:</span>
-                            <span class="server-info-value server-info-status ${result.status.toLowerCase()}"><span class="status-dot"></span>${statusText}</span>
-                        </div>
-                    `;
+                    infoContent.replaceChildren();
+                    const fields = [
+                        ['Container Name:', result.container_name],
+                        ['Image:', result.image],
+                        ['Container ID:', result.container_id],
+                        ['Created:', new Date(result.created).toLocaleString()]
+                    ];
+                    fields.forEach(([label, value]) => {
+                        const row = document.createElement('div');
+                        row.className = 'server-info-row';
+                        const labelSpan = document.createElement('span');
+                        labelSpan.className = 'server-info-label';
+                        labelSpan.textContent = label;
+                        const valueSpan = document.createElement('span');
+                        valueSpan.className = 'server-info-value';
+                        if (label === 'Container ID:') {
+                            valueSpan.classList.add('server-info-id');
+                        }
+                        valueSpan.textContent = value;
+                        row.appendChild(labelSpan);
+                        row.appendChild(valueSpan);
+                        infoContent.appendChild(row);
+                    });
+                    const statusRow = document.createElement('div');
+                    statusRow.className = 'server-info-row';
+                    const statusLabel = document.createElement('span');
+                    statusLabel.className = 'server-info-label';
+                    statusLabel.textContent = 'Status:';
+                    const statusValue = document.createElement('span');
+                    statusValue.className = `server-info-value server-info-status ${String(result.status || '').toLowerCase()}`;
+                    const statusDot = document.createElement('span');
+                    statusDot.className = 'status-dot';
+                    statusValue.appendChild(statusDot);
+                    statusValue.appendChild(document.createTextNode(statusText));
+                    statusRow.appendChild(statusLabel);
+                    statusRow.appendChild(statusValue);
+                    infoContent.appendChild(statusRow);
                     infoElement.style.display = 'block';
                 } else {
                     if (result.message.includes('Docker module not available')) {
@@ -2007,12 +2098,12 @@
                     } else if (result.message.includes('Docker client not available')) {
                         infoContent.innerHTML = `<div class="alert alert-warning mb-0"><strong>Docker Not Connected:</strong> Cannot connect to Docker daemon. Ensure Docker is running and accessible.</div>`;
                     } else {
-                        infoContent.innerHTML = `<strong>Error:</strong> ${result.message}`;
+                        infoContent.textContent = `Error: ${result.message}`;
                     }
                     infoElement.style.display = 'block';
                 }
             } catch (error) {
-                infoContent.innerHTML = `<strong>Error:</strong> ${error.message}`;
+                infoContent.textContent = `Error: ${error.message}`;
                 infoElement.style.display = 'block';
             }
         }
@@ -2032,6 +2123,7 @@
                 const response = await fetch('/api/restart-server', {
                     method: 'POST',
                     headers: {
+                        ...addCsrfHeaders(),
                         'Content-Type': 'application/json',
                     }
                 });
@@ -2088,11 +2180,14 @@
                 } else {
                     // Create a more user-friendly error message
                     let errorMessage = result.message || 'Failed to load log';
-                    // Style the error message
-                    logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Log File Error</div><div style="color: #cccccc; line-height: 1.5;">${errorMessage}</div><div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;"><strong>Tips:</strong><ul style="margin: 5px 0 0 20px; padding: 0;"><li>Check the log filename in App Settings</li><li>Ensure the server has been running to generate logs</li><li>Verify file permissions if the file exists</li></ul></div>`;
+                    setErrorPanel(logPre, 'Log File Error', errorMessage, [
+                        'Check the log filename in App Settings',
+                        'Ensure the server has been running to generate logs',
+                        'Verify file permissions if the file exists'
+                    ]);
                 }
             } catch (error) {
-                logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Connection Error</div><div style="color: #cccccc;">Unable to connect to the server: ${error.message}</div>`;
+                setErrorPanel(logPre, 'Connection Error', `Unable to connect to the server: ${error.message}`, []);
             }
         }
 
@@ -2109,12 +2204,14 @@
                 } else {
                     // Create a more user-friendly error message
                     let errorMessage = result.message || 'Failed to load container log';
-                    
-                    // Style the error message
-                    logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Container Log Error</div><div style="color: #cccccc; line-height: 1.5;">${errorMessage}</div><div style="margin-top: 15px; padding: 10px; background: rgba(255, 107, 53, 0.1); border-left: 3px solid #ff6b35; border-radius: 3px;"><strong>Tips:</strong><ul style="margin: 5px 0 0 20px; padding: 0;"><li>Check the container name in App Settings</li><li>Ensure Docker is running and accessible</li><li>Verify the container exists and is running</li></ul></div>`;
+                    setErrorPanel(logPre, 'Container Log Error', errorMessage, [
+                        'Check the container name in App Settings',
+                        'Ensure Docker is running and accessible',
+                        'Verify the container exists and is running'
+                    ]);
                 }
             } catch (error) {
-                logPre.innerHTML = `<div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-exclamation-triangle me-2"></i>Connection Error</div><div style="color: #cccccc;">Unable to connect to Docker: ${error.message}</div>`;
+                setErrorPanel(logPre, 'Connection Error', `Unable to connect to Docker: ${error.message}`, []);
             }
         }
 
@@ -2136,29 +2233,46 @@
                 spinner.style.display = 'none';
                 if (result.success) {
                     if (result.mods.length === 0) {
-                        modList.innerHTML = '<li class="list-group-item text-muted">No mods found</li>';
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item text-muted';
+                        li.textContent = 'No mods found';
+                        modList.appendChild(li);
                     } else {
                         result.mods.forEach(mod => {
                             const li = document.createElement('li');
                             li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                            li.innerHTML = `
-                                <span><i class='fas fa-file-archive me-2'></i>${mod}</span>
-                                <span class='mod-actions d-flex gap-2'>
-                                    <button class='btn btn-outline-danger btn-sm' onclick='deleteMod("${mod}")'>
-                                        <i class='fas fa-trash me-1'></i>Delete
-                                    </button>
-                                    <button class='btn btn-outline-primary btn-sm' onclick='downloadMod("${mod}")'><i class='fas fa-download me-1'></i>Download</button>
-                                </span>
-                            `;
+                            const label = document.createElement('span');
+                            label.innerHTML = "<i class='fas fa-file-archive me-2'></i>";
+                            label.appendChild(document.createTextNode(mod));
+                            const actions = document.createElement('span');
+                            actions.className = 'mod-actions d-flex gap-2';
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.className = 'btn btn-outline-danger btn-sm';
+                            deleteBtn.innerHTML = "<i class='fas fa-trash me-1'></i>Delete";
+                            deleteBtn.addEventListener('click', () => deleteMod(mod));
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'btn btn-outline-primary btn-sm';
+                            downloadBtn.innerHTML = "<i class='fas fa-download me-1'></i>Download";
+                            downloadBtn.addEventListener('click', () => downloadMod(mod));
+                            actions.appendChild(deleteBtn);
+                            actions.appendChild(downloadBtn);
+                            li.appendChild(label);
+                            li.appendChild(actions);
                             modList.appendChild(li);
                         });
                     }
                 } else {
-                    modList.innerHTML = `<li class='list-group-item text-danger'>${result.message || 'Failed to load mods'}</li>`;
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item text-danger';
+                    li.textContent = result.message || 'Failed to load mods';
+                    modList.appendChild(li);
                 }
             } catch (error) {
                 spinner.style.display = 'none';
-                modList.innerHTML = `<li class='list-group-item text-danger'>Error: ${error.message}</li>`;
+                const li = document.createElement('li');
+                li.className = 'list-group-item text-danger';
+                li.textContent = `Error: ${error.message}`;
+                modList.appendChild(li);
             }
         }
 
@@ -2192,6 +2306,7 @@
                 await new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
                     xhr.open('POST', '/api/mods', true);
+                    xhr.setRequestHeader('X-CSRF-Token', getCsrfToken());
                     xhr.onload = function() {
                         if (xhr.status >= 200 && xhr.status < 300) {
                             resolve(xhr.responseText);
@@ -2240,7 +2355,8 @@
             if (!confirm(`Are you sure you want to delete "${modName}"?`)) return;
             try {
                 const response = await fetch(`/api/mods/${encodeURIComponent(modName)}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: addCsrfHeaders()
                 });
                 const result = await response.json();
                 if (result.success) {
@@ -2256,8 +2372,7 @@
 
         async function updateUserInfo() {
             try {
-                const response = await fetch('/api/auth-info');
-                const result = await response.json();
+                const { data: result } = await fetchJson('/api/auth-info');
                 window.isAuthenticated = !!result.user;
                 window.authMode = result.mode;
                 const container = document.getElementById('userInfoContainer');
@@ -2279,7 +2394,15 @@
                         const img = new Image();
                         img.src = gravatarUrl;
                         img.onload = function() {
-                            avatar.innerHTML = `<img src='${gravatarUrl}' alt='avatar' style='width:2.2em;height:2.2em;border-radius:50%;object-fit:cover;'>`;
+                            avatar.replaceChildren();
+                            const image = document.createElement('img');
+                            image.src = gravatarUrl;
+                            image.alt = 'avatar';
+                            image.style.width = '2.2em';
+                            image.style.height = '2.2em';
+                            image.style.borderRadius = '50%';
+                            image.style.objectFit = 'cover';
+                            avatar.appendChild(image);
                         };
                         img.onerror = function() {
                             avatar.textContent = email.charAt(0).toUpperCase();
@@ -2326,7 +2449,7 @@
             const authBtn = document.getElementById('authModalLoginBtn');
             if (authBtn) {
                 authBtn.addEventListener('click', function() {
-                    fetch('/api/auth-info').then(r => r.json()).then(info => {
+                    fetchJson('/api/auth-info').then(({ data: info }) => {
                         if (info.mode === 'OAUTH') {
                             window.location.href = '/oauth/login';
                         } else if (info.mode === 'SAML') {
@@ -2352,12 +2475,11 @@
                     errorDiv.style.display = 'none';
                     errorDiv.textContent = '';
                     try {
-                        const resp = await fetch('/login', {
+                        const { data: result } = await fetchJson('/login', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ username, password })
+                            headers: addCsrfHeaders({ 'Content-Type': 'application/json' }),
+                            body: JSON.stringify({ username, password, csrf_token: getCsrfToken() })
                         });
-                        const result = await resp.json();
                         if (result.success) {
                             // Hide the modal
                             const modal = bootstrap.Modal.getInstance(document.getElementById('authRequiredModal'));
@@ -2424,7 +2546,7 @@
             if (logoutBtn) {
                 logoutBtn.addEventListener('click', async function() {
                     try {
-                        await fetch('/logout', { method: 'POST' });
+                        await fetch('/logout', { method: 'POST', headers: addCsrfHeaders() });
                         window.location.reload();
                     } catch (e) {
                         showAlert('Logout failed', 'danger');
