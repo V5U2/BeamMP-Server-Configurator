@@ -5,3 +5,9 @@
 
 .env
 .dockerignore
+
+# Local Snyk scan outputs
+snyk-report.json
+snyk-report.sarif
+snyk-results.json
+snyk-results.sarif
