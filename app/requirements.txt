@@ -3,5 +3,5 @@ toml==0.10.2
 requests==2.33.0 
 werkzeug==3.1.6
 pysaml2==7.4.1 
-Authlib==1.6.11 
+Authlib==1.6.12 
 gunicorn==23.0.0
